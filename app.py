@@ -9,13 +9,13 @@ st.markdown("""
     <style>
     html, body, [class*="css"] { font-size: 0.95rem; }
     
-    /* 📌 사이드바(라인업 설정) 너비 대폭 축소 */
+    /* 사이드바 너비 축소 */
     section[data-testid="stSidebar"] {
         width: 220px !important;
         min-width: 220px !important;
     }
     
-    /* 일반 버튼 (오른쪽 플레이 액션 - 컴팩트하게) */
+    /* 일반 버튼 (오른쪽 플레이 액션) */
     div.stButton > button[kind="secondary"] { 
         height: 3.2em; font-weight: bold; font-size: 0.95rem;
         border-radius: 6px; padding: 2px 2px;
@@ -25,20 +25,30 @@ st.markdown("""
         background-color: #e0f2f1; color: #004d40; border-color: #00695c; 
     }
     
-    /* 🔥 코트 안의 선수 버튼 (노란색 원형 토큰 - 글씨 가득 차게) */
+    /* 🔥 토큰 안의 선수 이름 글씨를 2/3 이상 꽉 차게 강제 확대! 🔥 */
     div.stButton > button[kind="primary"] {
         background-color: #FFC107 !important; 
         color: #111111 !important; 
         border-radius: 60px !important; 
-        border: 2px solid #eeeeee !important; 
-        height: 80px !important; /* 토큰 느낌을 살리기 위해 높이 조정 */
-        font-weight: 900 !important;
-        font-size: 2.4rem !important; /* 📌 글씨 크기를 버튼의 반 이상 차지하도록 극대화! */
-        line-height: 1 !important;
+        border: 2px solid #ffffff !important; 
+        height: 85px !important; /* 토큰 높이 확보 */
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
         box-shadow: 0px 4px 6px rgba(0,0,0,0.2) !important;
         transition: all 0.2s ease-in-out;
+    }
+    
+    /* 버튼 내부의 텍스트(이름) 태그를 직접 타겟팅하여 크기를 2/3 수준으로 대폭 키움 */
+    div.stButton > button[kind="primary"] p {
+        font-size: 2.8rem !important; /* 📌 글씨 크기 극대화 */
+        font-weight: 900 !important;
+        line-height: 1 !important;
+        margin: 0 !important;
         padding: 0 !important;
     }
+
     div.stButton > button[kind="primary"]:focus {
         background-color: #E65100 !important;
         color: white !important;
@@ -163,7 +173,7 @@ else:
 
 st.divider()
 
-# 📌 비율 조정: 코트 명단(35) vs 플레이 내용(65)
+# 📌 비율 35:65 배치
 main_col1, main_col2 = st.columns([35, 65])
 
 # ==========================================
@@ -210,7 +220,6 @@ with main_col2:
     st.subheader("⚡ 플레이 내용")
     curr_p = st.session_state.selected_player
     
-    # 더 넓어진 공간에 5열 배치를 유지하여 쾌적하게 터치 가능
     act_c1, act_c2, act_c3, act_c4, act_c5 = st.columns(5)
     
     with act_c1:
