@@ -23,16 +23,17 @@ st.markdown("""
     div.stButton > button[kind="primary"] {
         background-color: #FFC107 !important; /* 쨍한 노란색 */
         color: #111111 !important; /* 진한 검은색 글씨 */
-        border-radius: 50px !important; /* 완벽한 동그라미 */
-        border: 2px solid #eeeeee !important; /* 얇은 테두리 */
-        height: 5em !important; /* 버튼 높이 증가 */
+        border-radius: 50px !important; /* 완벽한 둥근 모양 */
+        border: 2px solid #eeeeee !important; 
+        height: 4em !important; /* 📌 버튼 높이는 예전처럼 날렵하게! */
         font-weight: 900 !important;
-        font-size: 1.3rem !important; /* 📌 선수 이름 크기 대폭 확대! */
-        box-shadow: 0px 4px 6px rgba(0,0,0,0.2) !important; /* 입체감 그림자 */
+        font-size: 1.25rem !important; /* 📌 글씨 크기는 크고 시원하게! */
+        box-shadow: 0px 4px 6px rgba(0,0,0,0.2) !important;
         transition: all 0.2s ease-in-out;
+        padding: 0 !important;
     }
     div.stButton > button[kind="primary"]:focus {
-        background-color: #E65100 !important; /* 누르면 진한 주황색 */
+        background-color: #E65100 !important;
         color: white !important;
         transform: scale(0.95);
     }
@@ -45,42 +46,28 @@ st.markdown("""
     
     /* 📌 포지션 글씨 (진하고 또렷하게) */
     .pos-label { 
-        font-size: 0.95em; color: #37474f; margin-bottom: -5px; 
+        font-size: 0.95em; color: #37474f; margin-bottom: -3px; 
         font-weight: 900; text-align: center;
     }
 
     /* 🔥 리얼한 배구 네트 아트 🔥 */
     .net-container {
-        position: relative;
-        width: 100%;
-        height: 60px;
-        margin-top: 10px;
-        margin-bottom: 30px;
+        position: relative; width: 100%; height: 60px;
+        margin-top: 10px; margin-bottom: 30px;
     }
     .net-pole-left, .net-pole-right {
-        position: absolute;
-        top: 0;
-        width: 6px;
-        height: 80px;
-        background-color: #90a4ae; /* 쇠기둥 색상 */
-        border-radius: 2px;
+        position: absolute; top: 0; width: 6px; height: 80px;
+        background-color: #90a4ae; border-radius: 2px;
     }
     .net-pole-left { left: 0; }
     .net-pole-right { right: 0; }
     
     .net-mesh {
-        position: absolute;
-        top: 10px;
-        left: 6px;
-        right: 6px;
-        height: 40px;
+        position: absolute; top: 10px; left: 6px; right: 6px; height: 40px;
         background-color: transparent;
-        background-image: 
-            linear-gradient(#455a64 1px, transparent 1px), 
-            linear-gradient(90deg, #455a64 1px, transparent 1px);
+        background-image: linear-gradient(#455a64 1px, transparent 1px), linear-gradient(90deg, #455a64 1px, transparent 1px);
         background-size: 12px 12px;
-        border-top: 6px solid #ffffff; /* 네트 위쪽 흰색 띠 */
-        border-bottom: 2px solid #ffffff; /* 네트 아래쪽 흰색 띠 */
+        border-top: 6px solid #ffffff; border-bottom: 2px solid #ffffff;
         box-shadow: 0 5px 10px rgba(0,0,0,0.1);
     }
     </style>
@@ -132,7 +119,7 @@ def undo_last():
     if st.session_state.log_data:
         st.session_state.log_data.pop()
 
-st.title("🏐 9인제 배구 실시간 대시보드 (v8.2)")
+st.title("🏐 9인제 배구 실시간 대시보드 (v8.3)")
 
 target_col, control_col = st.columns([3, 1])
 with target_col:
