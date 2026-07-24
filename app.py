@@ -5,18 +5,47 @@ import io
 
 st.set_page_config(page_title="9인제 배구 기록", layout="wide")
 
+# 컴팩트 CSS 스타일 설정 (버튼 크기 조절 및 상단 스탯표 최적화)
 st.markdown("""
     <style>
-    html, body, [class*="css"]  { font-size: 1.1rem; }
-    div.stButton > button:first-child { height: 4em; font-weight: bold; border-radius: 8px; }
-    div.stButton > button[data-baseweb="button"]:focus { background-color: #2e7d32; color: white; border-color: #1b5e20; }
-    .status-box { padding: 15px; border-radius: 10px; background-color: #eceff1; margin-bottom: 20px; border-left: 5px solid #263238; }
-    .pos-label { font-size: 0.85em; color: #455a64; margin-bottom: -10px; font-weight: 800; padding-left: 5px; }
+    html, body, [class*="css"] { font-size: 0.95rem; }
+    
+    /* 컴팩트한 버튼 크기 */
+    div.stButton > button:first-child { 
+        height: 3.2em; 
+        font-weight: bold; 
+        font-size: 0.95rem;
+        border-radius: 6px; 
+        padding: 2px 5px;
+    }
+    div.stButton > button[data-baseweb="button"]:focus { 
+        background-color: #2e7d32; 
+        color: white; 
+        border-color: #1b5e20; 
+    }
+    
+    /* 상단 상태 표시줄 컴팩트화 */
+    .status-box { 
+        padding: 8px 15px; 
+        border-radius: 8px; 
+        background-color: #eceff1; 
+        border-left: 5px solid #263238; 
+        font-size: 1.05rem;
+    }
+    
+    .pos-label { 
+        font-size: 0.8em; 
+        color: #546e7a; 
+        margin-bottom: -5px; 
+        font-weight: 800; 
+    }
+    
+    /* 컴팩트 네트 선 */
     .volleyball-net {
-        width: 100%; height: 45px; background-color: #263238;
+        width: 100%; height: 25px; background-color: #263238;
         background-image: linear-gradient(rgba(255,255,255,0.4) 2px, transparent 2px), linear-gradient(90deg, rgba(255,255,255,0.4) 2px, transparent 2px);
-        background-size: 12px 12px; border-top: 6px solid #eeeeee; border-bottom: 6px solid #eeeeee;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.2); margin-top: 10px; margin-bottom: 20px;
+        background-size: 10px 10px; border-top: 4px solid #eeeeee; border-bottom: 4px solid #eeeeee;
+        margin-top: 5px; margin-bottom: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -43,7 +72,7 @@ if 'lineup' not in st.session_state:
     }
 
 with st.sidebar:
-    st.header("📋 현재 코트 라인업 (교체)")
+    st.header("📋 라인업 설정 (교체)")
     positions = ["레프트", "세터", "라이트", "앞차", "센터", "백차", "레프트백", "센터백", "라이트백"]
     for pos in positions:
         st.session_state.lineup[pos] = st.selectbox(
@@ -62,27 +91,66 @@ def record_action(player, action_name, result_name):
         st.session_state.log_data.append(new_log)
         st.session_state.selected_player = None 
     else:
-        st.error("⚠️ 왼쪽에 선수를 먼저 터치해주세요!")
+        st.error("⚠️ 코트에서 선수를 먼저 선택하세요!")
 
 def undo_last():
     if st.session_state.log_data:
         st.session_state.log_data.pop()
 
-st.title("🏐 9인제 배구 실시간 대시보드 (v6.1)")
+# --- 1. 상단 타이틀 및 선택 상태 ---
+st.title("🏐 9인제 배구 실시간 대시보드 (v7.0)")
 
 target_col, control_col = st.columns([3, 1])
 with target_col:
-    player_display = st.session_state.selected_player if st.session_state.selected_player else "선택 안 됨 (선수를 터치하세요)"
+    player_display = st.session_state.selected_player if st.session_state.selected_player else "선택 안 됨 (코트에서 선수를 터치하세요)"
     st.markdown(f"""
-        <div class="status-box">👉 <b>현재 기록 대상:</b> <span style="color:#1565c0; font-size:1.4em;">[{player_display}]</span></div>
+        <div class="status-box">👉 <b>현재 기록 대상:</b> <span style="color:#1565c0; font-size:1.3em;">[{player_display}]</span></div>
         """, unsafe_allow_html=True)
 with control_col:
     st.button("⏪ 직전 기록 취소", on_click=undo_last, use_container_width=True)
 
+st.write("")
+
+# --- 2. 최상단: 선수별 실시간 스탯 현황판 ---
+if st.session_state.log_data:
+    df_log = pd.DataFrame(st.session_state.log_data)
+    stats = []
+    for p in df_log['선수'].unique():
+        p_data = df_log[df_log['선수'] == p]
+        atk_pts = len(p_data[(p_data['액션'] == '공격') & (p_data['결과'] == '득점')])
+        blk_pts = len(p_data[(p_data['액션'] == '블로킹') & (p_data['결과'] == '득점')])
+        srv_pts = len(p_data[(p_data['액션'] == '서브') & (p_data['결과'] == '득점')])
+        rec_perf = len(p_data[(p_data['액션'] == '리시브') & (p_data['결과'] == '정확')])
+        dig_suc = len(p_data[(p_data['액션'] == '수비') & (p_data['결과'] == '성공')])
+        
+        err_list = ['범실', '실패', '네트터치', '오버넷', '캐치볼', '더블컨택']
+        tot_err = len(p_data[p_data['결과'].isin(err_list)])
+        
+        stats.append({
+            "선수명": p,
+            "총 득점": atk_pts + blk_pts + srv_pts,
+            "공격 득점": atk_pts,
+            "블로킹": blk_pts,
+            "서브 득점": srv_pts,
+            "리시브 정확": rec_perf,
+            "수비 성공": dig_suc,
+            "총 범실": tot_err
+        })
+    stats_df = pd.DataFrame(stats).sort_values(by="총 득점", ascending=False).reset_index(drop=True)
+    
+    st.subheader("🏆 선수별 실시간 스탯 현황판")
+    st.dataframe(stats_df, use_container_width=True, height=180)
+else:
+    st.info("💡 기록을 시작하면 이곳에 실시간 선수별 스탯 현황판이 즉시 나타납니다.")
+
+st.divider()
+
+# --- 3. 입력 영역: [코트 명단] | [플레이 내용] ---
 main_col1, main_col2 = st.columns([2, 3])
 
+# 코트 명단
 with main_col1:
-    st.subheader("👥 9인제 코트")
+    st.subheader("👥 코트 명단")
     st.markdown('<div class="volleyball-net"></div>', unsafe_allow_html=True)
     
     row1 = st.columns(3)
@@ -91,111 +159,81 @@ with main_col1:
             st.markdown(f'<div class="pos-label">{pos}</div>', unsafe_allow_html=True)
             if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): st.session_state.selected_player = st.session_state.lineup[pos]
     
-    st.write("")
     row2 = st.columns(3)
     for i, pos in enumerate(["앞차", "센터", "백차"]):
         with row2[i]:
             st.markdown(f'<div class="pos-label">{pos}</div>', unsafe_allow_html=True)
             if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): st.session_state.selected_player = st.session_state.lineup[pos]
             
-    st.write("")
     row3 = st.columns(3)
     for i, pos in enumerate(["레프트백", "센터백", "라이트백"]):
         with row3[i]:
             st.markdown(f'<div class="pos-label">{pos}</div>', unsafe_allow_html=True)
             if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): st.session_state.selected_player = st.session_state.lineup[pos]
 
+# 플레이 내용 (2줄 깔끔 배치)
 with main_col2:
-    st.subheader("⚡ 액션 터치 (즉시 저장)")
+    st.subheader("⚡ 플레이 내용 (터치 저장)")
     curr_p = st.session_state.selected_player
-    r1_col1, r1_col2 = st.columns(2)
     
-    with r1_col1:
+    # [1번째 줄] 서브 / 리시브 / 공격
+    r1_c1, r1_c2, r1_c3 = st.columns(3)
+    with r1_c1:
         st.write("**[서브]**")
         if st.button("🔴 서브 득점", use_container_width=True): record_action(curr_p, "서브", "득점")
         if st.button("⚪ 서브 성공", use_container_width=True): record_action(curr_p, "서브", "성공")
         if st.button("❌ 서브 범실", use_container_width=True): record_action(curr_p, "서브", "범실")
-    with r1_col2:
+        
+    with r1_c2:
         st.write("**[리시브]**")
         if st.button("🎯 리시브 정확", use_container_width=True): record_action(curr_p, "리시브", "정확")
         if st.button("OK 리시브 보통", use_container_width=True): record_action(curr_p, "리시브", "성공")
         if st.button("💔 리시브 실패", use_container_width=True): record_action(curr_p, "리시브", "실패")
-    
-    st.write("---")
-    r2_col1, r2_col2 = st.columns(2)
-    with r2_col1:
+        
+    with r1_c3:
         st.write("**[공격]**")
         if st.button("🔥 공격 득점", use_container_width=True): record_action(curr_p, "공격", "득점")
         if st.button("❌ 공격 범실", use_container_width=True): record_action(curr_p, "공격", "범실")
+
+    st.write("---")
+
+    # [2번째 줄] 수비/세트 / 블로킹 / 기타 범실
+    r2_c1, r2_c2, r2_c3 = st.columns(3)
+    with r2_c1:
+        st.write("**[수비 / 세트]**")
+        if st.button("👐 수비 성공", use_container_width=True): record_action(curr_p, "수비", "성공")
+        if st.button("⬆️ 세트 정확", use_container_width=True): record_action(curr_p, "세트", "정확")
         
+    with r2_c2:
         st.write("**[블로킹]**")
         if st.button("🧱 블로킹 득점", use_container_width=True): record_action(curr_p, "블로킹", "득점")
         if st.button("❌ 블로킹 범실", use_container_width=True): record_action(curr_p, "블로킹", "범실")
         
-    with r2_col2:
-        st.write("**[수비 / 토스]**")
-        if st.button("👐 수비 성공", use_container_width=True): record_action(curr_p, "수비", "성공")
-        if st.button("⬆️ 세트 정확", use_container_width=True): record_action(curr_p, "세트", "정확")
-        
+    with r2_c3:
         st.write("**[기타 범실]**")
-        err_col1, err_col2 = st.columns(2)
-        with err_col1:
+        err1, err2 = st.columns(2)
+        with err1:
             if st.button("⚠️ 네트터치", use_container_width=True): record_action(curr_p, "범실", "네트터치")
             if st.button("⚠️ 오버넷", use_container_width=True): record_action(curr_p, "범실", "오버넷")
-        with err_col2:
+        with err2:
             if st.button("⚠️ 캐치볼", use_container_width=True): record_action(curr_p, "범실", "캐치볼")
             if st.button("⚠️ 더블컨택", use_container_width=True): record_action(curr_p, "범실", "더블컨택")
 
 st.divider()
 
-# --- 실시간 선수별 활약상 (스탯 표) ---
+# --- 4. 하단 전체 로그 및 엑셀 다운로드 ---
 if st.session_state.log_data:
-    st.subheader("🏆 실시간 선수별 활약상")
     df_log = pd.DataFrame(st.session_state.log_data)
-    
-    stats = []
-    recorded_players = df_log['선수'].unique()
-    
-    for p in recorded_players:
-        p_data = df_log[df_log['선수'] == p]
-        
-        atk_pts = len(p_data[(p_data['액션'] == '공격') & (p_data['결과'] == '득점')])
-        blk_pts = len(p_data[(p_data['액션'] == '블로킹') & (p_data['결과'] == '득점')])
-        srv_pts = len(p_data[(p_data['액션'] == '서브') & (p_data['결과'] == '득점')])
-        
-        rec_perf = len(p_data[(p_data['액션'] == '리시브') & (p_data['결과'] == '정확')])
-        dig_suc = len(p_data[(p_data['액션'] == '수비') & (p_data['결과'] == '성공')])
-        
-        err_list = ['범실', '실패', '네트터치', '오버넷', '캐치볼', '더블컨택']
-        tot_err = len(p_data[p_data['결과'].isin(err_list)])
-        
-        total_pts = atk_pts + blk_pts + srv_pts
-        
-        stats.append({
-            "선수명": p,
-            "총 득점": total_pts,
-            "공격 득점": atk_pts,
-            "블로킹 득점": blk_pts,
-            "서브 득점": srv_pts,
-            "리시브 정확": rec_perf,
-            "수비 성공": dig_suc,
-            "총 범실/실패": tot_err
-        })
-        
-    stats_df = pd.DataFrame(stats).sort_values(by="총 득점", ascending=False).reset_index(drop=True)
-    st.dataframe(stats_df, use_container_width=True)
-    
-    st.write("---")
-    with st.expander("📝 전체 시간대별 기록 로그 보기"):
+    with st.expander("📝 시간대별 전체 기록 로그 (펼치기)"):
         st.dataframe(df_log.iloc[::-1], use_container_width=True)
     
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-        df_log.to_excel(writer, index=False, sheet_name='경기기록')
-        stats_df.to_excel(writer, index=False, sheet_name='선수별요약')
+        df_log.to_excel(writer, index=False, sheet_name='경기기록로그')
+        stats_df.to_excel(writer, index=False, sheet_name='선수별요약스탯')
     
     st.download_button(
-        label="📥 엑셀 파일로 전체 기록 다운로드",
+        label="📥 엑셀 파일로 경기 기록 다운로드",
         data=buffer.getvalue(),
         file_name=f"배구경기기록_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
