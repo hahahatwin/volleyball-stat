@@ -17,7 +17,7 @@ st.markdown("""
     
     /* 일반 버튼 (오른쪽 플레이 액션 - 컴팩트하게) */
     div.stButton > button[kind="secondary"] { 
-        height: 3.2em; font-weight: bold; font-size: 0.9rem;
+        height: 3.2em; font-weight: bold; font-size: 0.95rem;
         border-radius: 6px; padding: 2px 2px;
         background-color: #f8f9fa; border: 1px solid #cfd8dc; color: #263238;
     }
@@ -25,15 +25,16 @@ st.markdown("""
         background-color: #e0f2f1; color: #004d40; border-color: #00695c; 
     }
     
-    /* 🔥 코트 안의 선수 버튼 (노란색 원형 토큰) */
+    /* 🔥 코트 안의 선수 버튼 (노란색 원형 토큰 - 글씨 가득 차게) */
     div.stButton > button[kind="primary"] {
         background-color: #FFC107 !important; 
         color: #111111 !important; 
-        border-radius: 50px !important; 
+        border-radius: 60px !important; 
         border: 2px solid #eeeeee !important; 
-        height: 70px !important; 
+        height: 80px !important; /* 토큰 느낌을 살리기 위해 높이 조정 */
         font-weight: 900 !important;
-        font-size: 1.7rem !important; 
+        font-size: 2.4rem !important; /* 📌 글씨 크기를 버튼의 반 이상 차지하도록 극대화! */
+        line-height: 1 !important;
         box-shadow: 0px 4px 6px rgba(0,0,0,0.2) !important;
         transition: all 0.2s ease-in-out;
         padding: 0 !important;
@@ -162,11 +163,11 @@ else:
 
 st.divider()
 
-# 📌 코트 명단(비율 3)과 플레이 내용(비율 4)을 나란히 배치
-main_col1, main_col2 = st.columns([3, 4])
+# 📌 비율 조정: 코트 명단(35) vs 플레이 내용(65)
+main_col1, main_col2 = st.columns([35, 65])
 
 # ==========================================
-# 👥 코트 명단 영역 
+# 👥 코트 명단 영역 (비율 35%)
 # ==========================================
 with main_col1:
     st.subheader("👥 코트 명단")
@@ -203,13 +204,13 @@ with main_col1:
                 st.session_state.selected_player = st.session_state.lineup[pos]
 
 # ==========================================
-# ⚡ 플레이 내용 영역 (세로 5줄로 슬림하게 압축!)
+# ⚡ 플레이 내용 영역 (비율 65%)
 # ==========================================
 with main_col2:
     st.subheader("⚡ 플레이 내용")
     curr_p = st.session_state.selected_player
     
-    # 가로 5칸으로 잘게 쪼개어 버튼들이 옆으로 퍼지지 않게 만듭니다.
+    # 더 넓어진 공간에 5열 배치를 유지하여 쾌적하게 터치 가능
     act_c1, act_c2, act_c3, act_c4, act_c5 = st.columns(5)
     
     with act_c1:
