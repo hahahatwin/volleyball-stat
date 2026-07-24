@@ -14,17 +14,21 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 1. 초기 데이터 설정
 if 'log_data' not in st.session_state:
     st.session_state.log_data = []
 if 'selected_player' not in st.session_state:
     st.session_state.selected_player = None
 
-# 팀 전체 명단 (이곳에 팀원 이름을 쭉 적어두면 됩니다)
+# 팀 명단 적용 완료
 if 'team_roster' not in st.session_state:
-    st.session_state.team_roster = ["김철수", "이영희", "박지민", "최동훈", "정수진", "강민호", "윤서연", "조현우", "임지영", "후보1", "후보2", "후보3", "후보4"]
+    st.session_state.team_roster = [
+        "유석현", "홍순석", "이준호", "조형민", "백충석", "문기영", "이광호", "김수홍", "홍성준", "김기상",
+        "이민구", "문준기", "김수현", "이웅용", "이우형", "이준익", "문원기", "박준형", "문승민", "문상록",
+        "김홍무", "손효준", "이대윤", "김백현", "김준영", "명 수", "양재훈", "방기성", "김두헌", "최병주",
+        "길운상", "최민규", "강대서", "김용신", "유무영", "김태영", "신정환", "이규승"
+    ]
 
-# 현재 코트 위 9명 포지션 매칭
+# 초기 라인업 세팅 (명단의 첫 9명으로 기본 설정)
 if 'lineup' not in st.session_state:
     st.session_state.lineup = {
         "전위 좌": st.session_state.team_roster[0], "전위 중": st.session_state.team_roster[1], "전위 우": st.session_state.team_roster[2],
@@ -32,12 +36,8 @@ if 'lineup' not in st.session_state:
         "후위 좌": st.session_state.team_roster[6], "후위 중": st.session_state.team_roster[7], "후위 우": st.session_state.team_roster[8]
     }
 
-# 2. 사이드바: 라인업 및 교체 관리
 with st.sidebar:
     st.header("📋 현재 코트 라인업 (교체)")
-    st.write("세트 시작 전이나 교체 시 선수를 변경하세요.")
-    
-    # 9개 포지션에 대해 드롭다운(선택창) 생성
     positions = ["전위 좌", "전위 중", "전위 우", "중위 좌", "중위 중", "중위 우", "후위 좌", "후위 중", "후위 우"]
     for pos in positions:
         st.session_state.lineup[pos] = st.selectbox(
@@ -46,11 +46,7 @@ with st.sidebar:
             index=st.session_state.team_roster.index(st.session_state.lineup[pos]),
             key=f"select_{pos}"
         )
-    
-    st.divider()
-    st.write("💡 여기서 선수를 변경하면 우측 코트 버튼 이름이 즉시 바뀝니다.")
 
-# 3. 로직 함수
 def record_action(player, action_name, result_name):
     if player:
         new_log = {
@@ -68,8 +64,7 @@ def undo_last():
     if st.session_state.log_data:
         st.session_state.log_data.pop()
 
-# --- 메인 화면 시작 ---
-st.title("🏐 9인제 배구 실시간 대시보드 (v4.0)")
+st.title("🏐 9인제 배구 실시간 대시보드 (v5.1)")
 
 target_col, control_col = st.columns([3, 1])
 with target_col:
@@ -82,33 +77,26 @@ with control_col:
 
 main_col1, main_col2 = st.columns([2, 3])
 
-# 4. 선수 선택 영역 (사이드바에서 설정한 라인업 이름으로 버튼 생성)
 with main_col1:
     st.subheader("👥 9인제 코트")
-    
     row1 = st.columns(3)
     for i, pos in enumerate(["전위 좌", "전위 중", "전위 우"]):
         with row1[i]:
-            if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): 
-                st.session_state.selected_player = st.session_state.lineup[pos]
-
+            if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): st.session_state.selected_player = st.session_state.lineup[pos]
     row2 = st.columns(3)
     for i, pos in enumerate(["중위 좌", "중위 중", "중위 우"]):
         with row2[i]:
-            if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): 
-                st.session_state.selected_player = st.session_state.lineup[pos]
-
+            if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): st.session_state.selected_player = st.session_state.lineup[pos]
     row3 = st.columns(3)
     for i, pos in enumerate(["후위 좌", "후위 중", "후위 우"]):
         with row3[i]:
-            if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): 
-                st.session_state.selected_player = st.session_state.lineup[pos]
+            if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): st.session_state.selected_player = st.session_state.lineup[pos]
 
-# 5. 액션 및 결과 영역 (이전과 동일)
 with main_col2:
     st.subheader("⚡ 액션 터치 (즉시 저장)")
     curr_p = st.session_state.selected_player
     r1_col1, r1_col2 = st.columns(2)
+    
     with r1_col1:
         st.write("**[서브]**")
         if st.button("🔴 서브 득점", use_container_width=True): record_action(curr_p, "서브", "득점")
@@ -119,12 +107,17 @@ with main_col2:
         if st.button("🎯 리시브 정확", use_container_width=True): record_action(curr_p, "리시브", "정확")
         if st.button("OK 리시브 보통", use_container_width=True): record_action(curr_p, "리시브", "성공")
         if st.button("💔 리시브 실패", use_container_width=True): record_action(curr_p, "리시브", "실패")
+    
     st.write("---")
     r2_col1, r2_col2 = st.columns(2)
     with r2_col1:
         st.write("**[공격]**")
         if st.button("🔥 공격 득점", use_container_width=True): record_action(curr_p, "공격", "득점")
         if st.button("❌ 공격 범실", use_container_width=True): record_action(curr_p, "공격", "범실")
+        # 블로킹 추가
+        st.write("**[블로킹]**")
+        if st.button("🧱 블로킹 득점", use_container_width=True): record_action(curr_p, "블로킹", "득점")
+        if st.button("❌ 블로킹 범실", use_container_width=True): record_action(curr_p, "블로킹", "범실")
     with r2_col2:
         st.write("**[수비 / 토스]**")
         if st.button("👐 수비 성공", use_container_width=True): record_action(curr_p, "수비", "성공")
@@ -132,7 +125,6 @@ with main_col2:
 
 st.divider()
 
-# 6. 통계 요약 및 엑셀 다운로드
 if st.session_state.log_data:
     df_log = pd.DataFrame(st.session_state.log_data)
     
