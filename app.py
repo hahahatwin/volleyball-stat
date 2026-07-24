@@ -19,7 +19,7 @@ if 'log_data' not in st.session_state:
 if 'selected_player' not in st.session_state:
     st.session_state.selected_player = None
 
-# 팀 명단 적용 완료
+# 팀 명단
 if 'team_roster' not in st.session_state:
     st.session_state.team_roster = [
         "유석현", "홍순석", "이준호", "조형민", "백충석", "문기영", "이광호", "김수홍", "홍성준", "김기상",
@@ -28,17 +28,18 @@ if 'team_roster' not in st.session_state:
         "길운상", "최민규", "강대서", "김용신", "유무영", "김태영", "신정환", "이규승"
     ]
 
-# 초기 라인업 세팅 (명단의 첫 9명으로 기본 설정)
+# 💡 포지션명 변경 적용 (초기 라인업)
 if 'lineup' not in st.session_state:
     st.session_state.lineup = {
-        "전위 좌": st.session_state.team_roster[0], "전위 중": st.session_state.team_roster[1], "전위 우": st.session_state.team_roster[2],
-        "중위 좌": st.session_state.team_roster[3], "중위 중": st.session_state.team_roster[4], "중위 우": st.session_state.team_roster[5],
-        "후위 좌": st.session_state.team_roster[6], "후위 중": st.session_state.team_roster[7], "후위 우": st.session_state.team_roster[8]
+        "레프트": st.session_state.team_roster[0], "세터": st.session_state.team_roster[1], "라이트": st.session_state.team_roster[2],
+        "앞차": st.session_state.team_roster[3], "센터": st.session_state.team_roster[4], "백차": st.session_state.team_roster[5],
+        "레프트백": st.session_state.team_roster[6], "센터백": st.session_state.team_roster[7], "라이트백": st.session_state.team_roster[8]
     }
 
 with st.sidebar:
     st.header("📋 현재 코트 라인업 (교체)")
-    positions = ["전위 좌", "전위 중", "전위 우", "중위 좌", "중위 중", "중위 우", "후위 좌", "후위 중", "후위 우"]
+    # 💡 포지션명 변경 적용 (사이드바)
+    positions = ["레프트", "세터", "라이트", "앞차", "센터", "백차", "레프트백", "센터백", "라이트백"]
     for pos in positions:
         st.session_state.lineup[pos] = st.selectbox(
             f"{pos}", 
@@ -64,7 +65,7 @@ def undo_last():
     if st.session_state.log_data:
         st.session_state.log_data.pop()
 
-st.title("🏐 9인제 배구 실시간 대시보드 (v5.1)")
+st.title("🏐 9인제 배구 실시간 대시보드 (v5.3)")
 
 target_col, control_col = st.columns([3, 1])
 with target_col:
@@ -79,16 +80,17 @@ main_col1, main_col2 = st.columns([2, 3])
 
 with main_col1:
     st.subheader("👥 9인제 코트")
+    # 💡 포지션명 변경 적용 (코트 화면 버튼)
     row1 = st.columns(3)
-    for i, pos in enumerate(["전위 좌", "전위 중", "전위 우"]):
+    for i, pos in enumerate(["레프트", "세터", "라이트"]):
         with row1[i]:
             if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): st.session_state.selected_player = st.session_state.lineup[pos]
     row2 = st.columns(3)
-    for i, pos in enumerate(["중위 좌", "중위 중", "중위 우"]):
+    for i, pos in enumerate(["앞차", "센터", "백차"]):
         with row2[i]:
             if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): st.session_state.selected_player = st.session_state.lineup[pos]
     row3 = st.columns(3)
-    for i, pos in enumerate(["후위 좌", "후위 중", "후위 우"]):
+    for i, pos in enumerate(["레프트백", "센터백", "라이트백"]):
         with row3[i]:
             if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): st.session_state.selected_player = st.session_state.lineup[pos]
 
@@ -109,19 +111,30 @@ with main_col2:
         if st.button("💔 리시브 실패", use_container_width=True): record_action(curr_p, "리시브", "실패")
     
     st.write("---")
+    
     r2_col1, r2_col2 = st.columns(2)
     with r2_col1:
         st.write("**[공격]**")
         if st.button("🔥 공격 득점", use_container_width=True): record_action(curr_p, "공격", "득점")
         if st.button("❌ 공격 범실", use_container_width=True): record_action(curr_p, "공격", "범실")
-        # 블로킹 추가
+        
         st.write("**[블로킹]**")
         if st.button("🧱 블로킹 득점", use_container_width=True): record_action(curr_p, "블로킹", "득점")
         if st.button("❌ 블로킹 범실", use_container_width=True): record_action(curr_p, "블로킹", "범실")
+        
     with r2_col2:
         st.write("**[수비 / 토스]**")
         if st.button("👐 수비 성공", use_container_width=True): record_action(curr_p, "수비", "성공")
         if st.button("⬆️ 세트 정확", use_container_width=True): record_action(curr_p, "세트", "정확")
+        
+        st.write("**[기타 범실]**")
+        err_col1, err_col2 = st.columns(2)
+        with err_col1:
+            if st.button("⚠️ 네트터치", use_container_width=True): record_action(curr_p, "범실", "네트터치")
+            if st.button("⚠️ 오버넷", use_container_width=True): record_action(curr_p, "범실", "오버넷")
+        with err_col2:
+            if st.button("⚠️ 캐치볼", use_container_width=True): record_action(curr_p, "범실", "캐치볼")
+            if st.button("⚠️ 더블컨택", use_container_width=True): record_action(curr_p, "범실", "더블컨택")
 
 st.divider()
 
