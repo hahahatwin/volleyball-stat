@@ -22,13 +22,13 @@ st.markdown("""
     /* 🔥 코트 안의 선수 버튼 (노란색 원형 토큰) 🔥 */
     div.stButton > button[kind="primary"] {
         background-color: #FFC107 !important; /* 쨍한 노란색 */
-        color: #000000 !important; /* 검은색 글씨 */
+        color: #111111 !important; /* 진한 검은색 글씨 */
         border-radius: 50px !important; /* 완벽한 동그라미 */
-        border: 3px solid #ffffff !important; /* 흰색 테두리 */
-        height: 4.5em !important; 
+        border: 2px solid #eeeeee !important; /* 얇은 테두리 */
+        height: 5em !important; /* 버튼 높이 증가 */
         font-weight: 900 !important;
-        font-size: 1.1rem !important;
-        box-shadow: 0px 4px 6px rgba(0,0,0,0.3) !important; /* 입체감 그림자 */
+        font-size: 1.3rem !important; /* 📌 선수 이름 크기 대폭 확대! */
+        box-shadow: 0px 4px 6px rgba(0,0,0,0.2) !important; /* 입체감 그림자 */
         transition: all 0.2s ease-in-out;
     }
     div.stButton > button[kind="primary"]:focus {
@@ -43,27 +43,45 @@ st.markdown("""
         border-left: 5px solid #263238; font-size: 1.05rem;
     }
     
-    /* 포지션 글씨 */
+    /* 📌 포지션 글씨 (진하고 또렷하게) */
     .pos-label { 
-        font-size: 0.85em; color: #ffffff; margin-bottom: -10px; 
-        font-weight: 900; text-align: center; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        font-size: 0.95em; color: #37474f; margin-bottom: -5px; 
+        font-weight: 900; text-align: center;
     }
 
-    /* 리얼한 네트 모양 */
-    .volleyball-net {
-        width: 100%; height: 25px; background-color: #263238;
-        background-image: linear-gradient(rgba(255,255,255,0.4) 2px, transparent 2px), linear-gradient(90deg, rgba(255,255,255,0.4) 2px, transparent 2px);
-        background-size: 10px 10px; border-top: 4px solid #ffffff; border-bottom: 4px solid #ffffff;
-        margin-top: 0px; margin-bottom: 15px; box-shadow: 0 5px 5px rgba(0,0,0,0.3);
+    /* 🔥 리얼한 배구 네트 아트 🔥 */
+    .net-container {
+        position: relative;
+        width: 100%;
+        height: 60px;
+        margin-top: 10px;
+        margin-bottom: 30px;
     }
+    .net-pole-left, .net-pole-right {
+        position: absolute;
+        top: 0;
+        width: 6px;
+        height: 80px;
+        background-color: #90a4ae; /* 쇠기둥 색상 */
+        border-radius: 2px;
+    }
+    .net-pole-left { left: 0; }
+    .net-pole-right { right: 0; }
     
-    /* 오렌지색 코트 배경을 위한 꼼수 */
-    .court-bg {
-        background-color: #E27D5F;
-        border: 3px solid white;
-        border-radius: 15px;
-        padding: 20px 10px 30px 10px;
-        box-shadow: inset 0 0 20px rgba(0,0,0,0.15);
+    .net-mesh {
+        position: absolute;
+        top: 10px;
+        left: 6px;
+        right: 6px;
+        height: 40px;
+        background-color: transparent;
+        background-image: 
+            linear-gradient(#455a64 1px, transparent 1px), 
+            linear-gradient(90deg, #455a64 1px, transparent 1px);
+        background-size: 12px 12px;
+        border-top: 6px solid #ffffff; /* 네트 위쪽 흰색 띠 */
+        border-bottom: 2px solid #ffffff; /* 네트 아래쪽 흰색 띠 */
+        box-shadow: 0 5px 10px rgba(0,0,0,0.1);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -114,7 +132,7 @@ def undo_last():
     if st.session_state.log_data:
         st.session_state.log_data.pop()
 
-st.title("🏐 9인제 배구 실시간 대시보드 (v8.1)")
+st.title("🏐 9인제 배구 실시간 대시보드 (v8.2)")
 
 target_col, control_col = st.columns([3, 1])
 with target_col:
@@ -157,13 +175,19 @@ st.divider()
 main_col1, main_col2 = st.columns([2, 3])
 
 # ==========================================
-# 👥 리얼 코트 명단 영역
+# 👥 코트 명단 영역 (리얼 네트 디자인 포함)
 # ==========================================
 with main_col1:
     st.subheader("👥 코트 명단")
-    st.markdown('<div class="volleyball-net"></div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="court-bg">', unsafe_allow_html=True)
+    # 📌 리얼한 배구 네트 (기둥 포함) 삽입
+    st.markdown("""
+        <div class="net-container">
+            <div class="net-pole-left"></div>
+            <div class="net-mesh"></div>
+            <div class="net-pole-right"></div>
+        </div>
+    """, unsafe_allow_html=True)
     
     row1 = st.columns(3)
     for i, pos in enumerate(["레프트", "세터", "라이트"]):
@@ -187,11 +211,9 @@ with main_col1:
             st.markdown(f'<div class="pos-label">{pos}</div>', unsafe_allow_html=True)
             if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True, type="primary"): 
                 st.session_state.selected_player = st.session_state.lineup[pos]
-                
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
-# ⚡ 플레이 내용 영역 (일반 네모 버튼)
+# ⚡ 플레이 내용 영역
 # ==========================================
 with main_col2:
     st.subheader("⚡ 플레이 내용 (터치 저장)")
