@@ -11,6 +11,17 @@ st.markdown("""
     div.stButton > button:first-child { height: 4em; font-weight: bold; border-radius: 8px; }
     div.stButton > button[data-baseweb="button"]:focus { background-color: #2e7d32; color: white; border-color: #1b5e20; }
     .status-box { padding: 15px; border-radius: 10px; background-color: #eceff1; margin-bottom: 20px; border-left: 5px solid #263238; }
+    
+    /* 포지션 이름 작게 표시하는 스타일 */
+    .pos-label { font-size: 0.8em; color: #546e7a; margin-bottom: -10px; font-weight: bold; }
+    
+    /* 네트 모양 점선 스타일 */
+    .volleyball-net {
+        border-top: 6px dashed #ff7043;
+        margin-top: 5px;
+        margin-bottom: 15px;
+        width: 100%;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -28,7 +39,7 @@ if 'team_roster' not in st.session_state:
         "길운상", "최민규", "강대서", "김용신", "유무영", "김태영", "신정환", "이규승"
     ]
 
-# 💡 포지션명 변경 적용 (초기 라인업)
+# 초기 라인업
 if 'lineup' not in st.session_state:
     st.session_state.lineup = {
         "레프트": st.session_state.team_roster[0], "세터": st.session_state.team_roster[1], "라이트": st.session_state.team_roster[2],
@@ -38,7 +49,6 @@ if 'lineup' not in st.session_state:
 
 with st.sidebar:
     st.header("📋 현재 코트 라인업 (교체)")
-    # 💡 포지션명 변경 적용 (사이드바)
     positions = ["레프트", "세터", "라이트", "앞차", "센터", "백차", "레프트백", "센터백", "라이트백"]
     for pos in positions:
         st.session_state.lineup[pos] = st.selectbox(
@@ -65,7 +75,7 @@ def undo_last():
     if st.session_state.log_data:
         st.session_state.log_data.pop()
 
-st.title("🏐 9인제 배구 실시간 대시보드 (v5.3)")
+st.title("🏐 9인제 배구 실시간 대시보드 (v5.4)")
 
 target_col, control_col = st.columns([3, 1])
 with target_col:
@@ -80,18 +90,28 @@ main_col1, main_col2 = st.columns([2, 3])
 
 with main_col1:
     st.subheader("👥 9인제 코트")
-    # 💡 포지션명 변경 적용 (코트 화면 버튼)
+    # 네트 그림 추가
+    st.markdown('<div class="volleyball-net"></div>', unsafe_allow_html=True)
+    
+    # 각 줄마다 포지션명 표시 후 버튼 배치
     row1 = st.columns(3)
     for i, pos in enumerate(["레프트", "세터", "라이트"]):
         with row1[i]:
+            st.markdown(f'<div class="pos-label">{pos}</div>', unsafe_allow_html=True)
             if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): st.session_state.selected_player = st.session_state.lineup[pos]
+    
+    st.write("") # 줄 간격 띄우기
     row2 = st.columns(3)
     for i, pos in enumerate(["앞차", "센터", "백차"]):
         with row2[i]:
+            st.markdown(f'<div class="pos-label">{pos}</div>', unsafe_allow_html=True)
             if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): st.session_state.selected_player = st.session_state.lineup[pos]
+            
+    st.write("")
     row3 = st.columns(3)
     for i, pos in enumerate(["레프트백", "센터백", "라이트백"]):
         with row3[i]:
+            st.markdown(f'<div class="pos-label">{pos}</div>', unsafe_allow_html=True)
             if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): st.session_state.selected_player = st.session_state.lineup[pos]
 
 with main_col2:
