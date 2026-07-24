@@ -11,16 +11,12 @@ st.markdown("""
     div.stButton > button:first-child { height: 4em; font-weight: bold; border-radius: 8px; }
     div.stButton > button[data-baseweb="button"]:focus { background-color: #2e7d32; color: white; border-color: #1b5e20; }
     .status-box { padding: 15px; border-radius: 10px; background-color: #eceff1; margin-bottom: 20px; border-left: 5px solid #263238; }
-    
-    /* 포지션 이름 작게 표시하는 스타일 */
-    .pos-label { font-size: 0.8em; color: #546e7a; margin-bottom: -10px; font-weight: bold; }
-    
-    /* 네트 모양 점선 스타일 */
+    .pos-label { font-size: 0.85em; color: #455a64; margin-bottom: -10px; font-weight: 800; padding-left: 5px; }
     .volleyball-net {
-        border-top: 6px dashed #ff7043;
-        margin-top: 5px;
-        margin-bottom: 15px;
-        width: 100%;
+        width: 100%; height: 45px; background-color: #263238;
+        background-image: linear-gradient(rgba(255,255,255,0.4) 2px, transparent 2px), linear-gradient(90deg, rgba(255,255,255,0.4) 2px, transparent 2px);
+        background-size: 12px 12px; border-top: 6px solid #eeeeee; border-bottom: 6px solid #eeeeee;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2); margin-top: 10px; margin-bottom: 20px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -39,7 +35,6 @@ if 'team_roster' not in st.session_state:
         "길운상", "최민규", "강대서", "김용신", "유무영", "김태영", "신정환", "이규승"
     ]
 
-# 초기 라인업
 if 'lineup' not in st.session_state:
     st.session_state.lineup = {
         "레프트": st.session_state.team_roster[0], "세터": st.session_state.team_roster[1], "라이트": st.session_state.team_roster[2],
@@ -52,10 +47,8 @@ with st.sidebar:
     positions = ["레프트", "세터", "라이트", "앞차", "센터", "백차", "레프트백", "센터백", "라이트백"]
     for pos in positions:
         st.session_state.lineup[pos] = st.selectbox(
-            f"{pos}", 
-            options=st.session_state.team_roster, 
-            index=st.session_state.team_roster.index(st.session_state.lineup[pos]),
-            key=f"select_{pos}"
+            f"{pos}", options=st.session_state.team_roster, 
+            index=st.session_state.team_roster.index(st.session_state.lineup[pos]), key=f"select_{pos}"
         )
 
 def record_action(player, action_name, result_name):
@@ -75,7 +68,7 @@ def undo_last():
     if st.session_state.log_data:
         st.session_state.log_data.pop()
 
-st.title("🏐 9인제 배구 실시간 대시보드 (v5.4)")
+st.title("🏐 9인제 배구 실시간 대시보드 (v6.1)")
 
 target_col, control_col = st.columns([3, 1])
 with target_col:
@@ -90,17 +83,15 @@ main_col1, main_col2 = st.columns([2, 3])
 
 with main_col1:
     st.subheader("👥 9인제 코트")
-    # 네트 그림 추가
     st.markdown('<div class="volleyball-net"></div>', unsafe_allow_html=True)
     
-    # 각 줄마다 포지션명 표시 후 버튼 배치
     row1 = st.columns(3)
     for i, pos in enumerate(["레프트", "세터", "라이트"]):
         with row1[i]:
             st.markdown(f'<div class="pos-label">{pos}</div>', unsafe_allow_html=True)
             if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True): st.session_state.selected_player = st.session_state.lineup[pos]
     
-    st.write("") # 줄 간격 띄우기
+    st.write("")
     row2 = st.columns(3)
     for i, pos in enumerate(["앞차", "센터", "백차"]):
         with row2[i]:
@@ -131,7 +122,6 @@ with main_col2:
         if st.button("💔 리시브 실패", use_container_width=True): record_action(curr_p, "리시브", "실패")
     
     st.write("---")
-    
     r2_col1, r2_col2 = st.columns(2)
     with r2_col1:
         st.write("**[공격]**")
@@ -158,30 +148,54 @@ with main_col2:
 
 st.divider()
 
+# --- 실시간 선수별 활약상 (스탯 표) ---
 if st.session_state.log_data:
+    st.subheader("🏆 실시간 선수별 활약상")
     df_log = pd.DataFrame(st.session_state.log_data)
     
-    st.subheader("📈 현재 경기 기록 요약")
-    attack_data = df_log[df_log['액션'] == '공격']
-    total_attacks = len(attack_data)
-    attack_points = len(attack_data[attack_data['결과'] == '득점'])
+    stats = []
+    recorded_players = df_log['선수'].unique()
     
-    col_a, col_b, col_c = st.columns(3)
-    col_a.metric("총 공격 시도", f"{total_attacks}회")
-    col_b.metric("공격 득점", f"{attack_points}점")
-    if total_attacks > 0:
-        success_rate = round((attack_points / total_attacks) * 100, 1)
-        col_c.metric("팀 공격 성공률", f"{success_rate}%")
+    for p in recorded_players:
+        p_data = df_log[df_log['선수'] == p]
+        
+        atk_pts = len(p_data[(p_data['액션'] == '공격') & (p_data['결과'] == '득점')])
+        blk_pts = len(p_data[(p_data['액션'] == '블로킹') & (p_data['결과'] == '득점')])
+        srv_pts = len(p_data[(p_data['액션'] == '서브') & (p_data['결과'] == '득점')])
+        
+        rec_perf = len(p_data[(p_data['액션'] == '리시브') & (p_data['결과'] == '정확')])
+        dig_suc = len(p_data[(p_data['액션'] == '수비') & (p_data['결과'] == '성공')])
+        
+        err_list = ['범실', '실패', '네트터치', '오버넷', '캐치볼', '더블컨택']
+        tot_err = len(p_data[p_data['결과'].isin(err_list)])
+        
+        total_pts = atk_pts + blk_pts + srv_pts
+        
+        stats.append({
+            "선수명": p,
+            "총 득점": total_pts,
+            "공격 득점": atk_pts,
+            "블로킹 득점": blk_pts,
+            "서브 득점": srv_pts,
+            "리시브 정확": rec_perf,
+            "수비 성공": dig_suc,
+            "총 범실/실패": tot_err
+        })
+        
+    stats_df = pd.DataFrame(stats).sort_values(by="총 득점", ascending=False).reset_index(drop=True)
+    st.dataframe(stats_df, use_container_width=True)
     
     st.write("---")
-    st.dataframe(df_log.iloc[::-1], use_container_width=True)
+    with st.expander("📝 전체 시간대별 기록 로그 보기"):
+        st.dataframe(df_log.iloc[::-1], use_container_width=True)
     
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
         df_log.to_excel(writer, index=False, sheet_name='경기기록')
+        stats_df.to_excel(writer, index=False, sheet_name='선수별요약')
     
     st.download_button(
-        label="📥 엑셀 파일로 경기 기록 다운로드",
+        label="📥 엑셀 파일로 전체 기록 다운로드",
         data=buffer.getvalue(),
         file_name=f"배구경기기록_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
