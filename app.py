@@ -9,25 +9,31 @@ st.markdown("""
     <style>
     html, body, [class*="css"] { font-size: 0.95rem; }
     
-    /* 일반 버튼 (오른쪽 플레이 액션) */
+    /* 📌 사이드바(라인업 설정) 너비 대폭 축소 */
+    section[data-testid="stSidebar"] {
+        width: 220px !important;
+        min-width: 220px !important;
+    }
+    
+    /* 일반 버튼 (오른쪽 플레이 액션 - 컴팩트하게) */
     div.stButton > button[kind="secondary"] { 
-        height: 3.5em; font-weight: bold; font-size: 0.95rem;
-        border-radius: 8px; padding: 2px 5px;
+        height: 3.2em; font-weight: bold; font-size: 0.9rem;
+        border-radius: 6px; padding: 2px 2px;
         background-color: #f8f9fa; border: 1px solid #cfd8dc; color: #263238;
     }
     div.stButton > button[kind="secondary"]:focus { 
         background-color: #e0f2f1; color: #004d40; border-color: #00695c; 
     }
     
-    /* 🔥 코트 안의 선수 버튼 (노란색 원형 토큰) 🔥 */
+    /* 🔥 코트 안의 선수 버튼 (노란색 원형 토큰) */
     div.stButton > button[kind="primary"] {
-        background-color: #FFC107 !important; /* 쨍한 노란색 */
-        color: #111111 !important; /* 진한 검은색 글씨 */
-        border-radius: 50px !important; /* 완벽한 둥근 모양 */
+        background-color: #FFC107 !important; 
+        color: #111111 !important; 
+        border-radius: 50px !important; 
         border: 2px solid #eeeeee !important; 
-        height: 4em !important; /* 📌 버튼 높이는 예전처럼 날렵하게! */
+        height: 70px !important; 
         font-weight: 900 !important;
-        font-size: 1.25rem !important; /* 📌 글씨 크기는 크고 시원하게! */
+        font-size: 1.7rem !important; 
         box-shadow: 0px 4px 6px rgba(0,0,0,0.2) !important;
         transition: all 0.2s ease-in-out;
         padding: 0 !important;
@@ -38,19 +44,16 @@ st.markdown("""
         transform: scale(0.95);
     }
     
-    /* 상태 표시줄 */
     .status-box { 
         padding: 8px 15px; border-radius: 8px; background-color: #eceff1; 
         border-left: 5px solid #263238; font-size: 1.05rem;
     }
     
-    /* 📌 포지션 글씨 (진하고 또렷하게) */
     .pos-label { 
         font-size: 0.95em; color: #37474f; margin-bottom: -3px; 
         font-weight: 900; text-align: center;
     }
 
-    /* 🔥 리얼한 배구 네트 아트 🔥 */
     .net-container {
         position: relative; width: 100%; height: 60px;
         margin-top: 10px; margin-bottom: 30px;
@@ -94,7 +97,7 @@ if 'lineup' not in st.session_state:
     }
 
 with st.sidebar:
-    st.header("📋 라인업 설정 (교체)")
+    st.header("📋 라인업(교체)")
     positions = ["레프트", "세터", "라이트", "앞차", "센터", "백차", "레프트백", "센터백", "라이트백"]
     for pos in positions:
         st.session_state.lineup[pos] = st.selectbox(
@@ -119,9 +122,9 @@ def undo_last():
     if st.session_state.log_data:
         st.session_state.log_data.pop()
 
-st.title("🏐 9인제 배구 실시간 대시보드 (v8.3)")
+st.title("🏐 9인제 배구 실시간 대시보드")
 
-target_col, control_col = st.columns([3, 1])
+target_col, control_col = st.columns([4, 1])
 with target_col:
     player_display = st.session_state.selected_player if st.session_state.selected_player else "선택 안 됨 (코트에서 선수를 터치하세요)"
     st.markdown(f"""
@@ -152,22 +155,22 @@ if st.session_state.log_data:
         })
     stats_df = pd.DataFrame(stats).sort_values(by="총 득점", ascending=False).reset_index(drop=True)
     
-    st.subheader("🏆 선수별 실시간 스탯 현황판")
-    st.dataframe(stats_df, use_container_width=True, height=180)
+    st.subheader("🏆 실시간 스탯")
+    st.dataframe(stats_df, use_container_width=True, height=150)
 else:
-    st.info("💡 기록을 시작하면 이곳에 실시간 선수별 스탯 현황판이 즉시 나타납니다.")
+    st.info("💡 기록을 시작하면 이곳에 실시간 스탯 현황판이 나타납니다.")
 
 st.divider()
 
-main_col1, main_col2 = st.columns([2, 3])
+# 📌 코트 명단(비율 3)과 플레이 내용(비율 4)을 나란히 배치
+main_col1, main_col2 = st.columns([3, 4])
 
 # ==========================================
-# 👥 코트 명단 영역 (리얼 네트 디자인 포함)
+# 👥 코트 명단 영역 
 # ==========================================
 with main_col1:
     st.subheader("👥 코트 명단")
     
-    # 📌 리얼한 배구 네트 (기둥 포함) 삽입
     st.markdown("""
         <div class="net-container">
             <div class="net-pole-left"></div>
@@ -200,48 +203,46 @@ with main_col1:
                 st.session_state.selected_player = st.session_state.lineup[pos]
 
 # ==========================================
-# ⚡ 플레이 내용 영역
+# ⚡ 플레이 내용 영역 (세로 5줄로 슬림하게 압축!)
 # ==========================================
 with main_col2:
-    st.subheader("⚡ 플레이 내용 (터치 저장)")
+    st.subheader("⚡ 플레이 내용")
     curr_p = st.session_state.selected_player
     
-    r1_c1, r1_c2, r1_c3 = st.columns(3)
-    with r1_c1:
+    # 가로 5칸으로 잘게 쪼개어 버튼들이 옆으로 퍼지지 않게 만듭니다.
+    act_c1, act_c2, act_c3, act_c4, act_c5 = st.columns(5)
+    
+    with act_c1:
         st.write("**[서브]**")
         if st.button("🔴 서브 득점", use_container_width=True): record_action(curr_p, "서브", "득점")
         if st.button("⚪ 서브 성공", use_container_width=True): record_action(curr_p, "서브", "성공")
         if st.button("❌ 서브 범실", use_container_width=True): record_action(curr_p, "서브", "범실")
-    with r1_c2:
+        
+    with act_c2:
         st.write("**[리시브]**")
         if st.button("🎯 리시브 정확", use_container_width=True): record_action(curr_p, "리시브", "정확")
         if st.button("OK 리시브 보통", use_container_width=True): record_action(curr_p, "리시브", "성공")
         if st.button("💔 리시브 실패", use_container_width=True): record_action(curr_p, "리시브", "실패")
-    with r1_c3:
+        
+    with act_c3:
         st.write("**[공격]**")
         if st.button("🔥 공격 득점", use_container_width=True): record_action(curr_p, "공격", "득점")
         if st.button("❌ 공격 범실", use_container_width=True): record_action(curr_p, "공격", "범실")
-
-    st.write("---")
-
-    r2_c1, r2_c2, r2_c3 = st.columns(3)
-    with r2_c1:
-        st.write("**[수비 / 세트]**")
-        if st.button("👐 수비 성공", use_container_width=True): record_action(curr_p, "수비", "성공")
-        if st.button("⬆️ 세트 정확", use_container_width=True): record_action(curr_p, "세트", "정확")
-    with r2_c2:
         st.write("**[블로킹]**")
         if st.button("🧱 블로킹 득점", use_container_width=True): record_action(curr_p, "블로킹", "득점")
         if st.button("❌ 블로킹 범실", use_container_width=True): record_action(curr_p, "블로킹", "범실")
-    with r2_c3:
+
+    with act_c4:
+        st.write("**[수비/세트]**")
+        if st.button("👐 수비 성공", use_container_width=True): record_action(curr_p, "수비", "성공")
+        if st.button("⬆️ 세트 정확", use_container_width=True): record_action(curr_p, "세트", "정확")
+
+    with act_c5:
         st.write("**[기타 범실]**")
-        err1, err2 = st.columns(2)
-        with err1:
-            if st.button("⚠️ 네트터치", use_container_width=True): record_action(curr_p, "범실", "네트터치")
-            if st.button("⚠️ 오버넷", use_container_width=True): record_action(curr_p, "범실", "오버넷")
-        with err2:
-            if st.button("⚠️ 캐치볼", use_container_width=True): record_action(curr_p, "범실", "캐치볼")
-            if st.button("⚠️ 더블컨택", use_container_width=True): record_action(curr_p, "범실", "더블컨택")
+        if st.button("⚠️ 네트터치", use_container_width=True): record_action(curr_p, "범실", "네트터치")
+        if st.button("⚠️ 오버넷", use_container_width=True): record_action(curr_p, "범실", "오버넷")
+        if st.button("⚠️ 캐치볼", use_container_width=True): record_action(curr_p, "범실", "캐치볼")
+        if st.button("⚠️ 더블컨택", use_container_width=True): record_action(curr_p, "범실", "더블컨택")
 
 st.divider()
 
@@ -256,7 +257,7 @@ if st.session_state.log_data:
         stats_df.to_excel(writer, index=False, sheet_name='선수별요약스탯')
     
     st.download_button(
-        label="📥 엑셀 파일로 경기 기록 다운로드",
+        label="📥 엑셀 파일 다운로드",
         data=buffer.getvalue(),
         file_name=f"배구경기기록_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
