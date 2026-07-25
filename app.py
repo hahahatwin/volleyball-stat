@@ -121,7 +121,6 @@ def undo_last():
 
 with st.sidebar:
     st.header("📋 경기 및 라인업 설정")
-    # 📌 경기명을 입력받아 데이터를 그룹화할 수 있게 합니다.
     match_name = st.text_input("📅 경기명 (예: 2026-07-25 결승전)", value=datetime.now().strftime("%Y-%m-%d 연습경기"))
     st.divider()
     positions = ["레프트", "세터", "라이트", "앞차", "센터", "백차", "레프트백", "센터백", "라이트백"]
@@ -129,7 +128,7 @@ with st.sidebar:
         st.session_state.lineup[pos] = st.selectbox(f"{pos}", options=st.session_state.team_roster, index=st.session_state.team_roster.index(st.session_state.lineup[pos]), key=f"select_{pos}", on_change=update_lineup_file)
 
 # ==========================================
-# 🏐 대시보드 상단 영역 (심층 스탯 계산)
+# 🏐 대시보드 상단 영역 (심층 스탯 계산 로직 연결)
 # ==========================================
 col_title, col_undo = st.columns([4, 1])
 with col_title: st.title(f"🏐 실시간 대시보드: {match_name}")
@@ -142,27 +141,29 @@ if st.session_state.log_data:
     for p in df_log['선수'].unique():
         p_data = df_log[df_log['선수'] == p]
         
-        # 공격 로직
+        # 🎯 공격 성공률: 공격 득점 / (공격 득점 + 공격 범실)
         atk_pts = len(p_data[(p_data['액션'] == '공격') & (p_data['결과'] == '득점')])
         atk_err = len(p_data[(p_data['액션'] == '공격') & (p_data['결과'] == '범실')])
         atk_tot = atk_pts + atk_err
         atk_rate = round((atk_pts / atk_tot * 100), 1) if atk_tot > 0 else 0.0
         
-        # 리시브 로직
+        # 🎯 리시브 정확도: 리시브 정확 / 전체 리시브 시도(정확+성공+실패)
         rec_ex = len(p_data[(p_data['액션'] == '리시브') & (p_data['결과'] == '정확')])
         rec_ok = len(p_data[(p_data['액션'] == '리시브') & (p_data['결과'] == '성공')])
         rec_fail = len(p_data[(p_data['액션'] == '리시브') & (p_data['결과'] == '실패')])
         rec_tot = rec_ex + rec_ok + rec_fail
         rec_rate = round((rec_ex / rec_tot * 100), 1) if rec_tot > 0 else 0.0
         
-        # 서브 로직
+        # 🎯 서브 성공률: (서브 득점 + 서브 성공) / 전체 서브 시도
         srv_pts = len(p_data[(p_data['액션'] == '서브') & (p_data['결과'] == '득점')])
         srv_ok = len(p_data[(p_data['액션'] == '서브') & (p_data['결과'] == '성공')])
-        srv_tot = len(p_data[p_data['액션'] == '서브'])
+        srv_err = len(p_data[(p_data['액션'] == '서브') & (p_data['결과'] == '범실')])
+        srv_tot = srv_pts + srv_ok + srv_err
         srv_rate = round(((srv_pts + srv_ok) / srv_tot * 100), 1) if srv_tot > 0 else 0.0
         
-        # 수비 및 블로킹
+        # 수비 및 세트, 블로킹, 범실
         dig_suc = len(p_data[(p_data['액션'] == '수비') & (p_data['결과'] == '성공')])
+        set_ex = len(p_data[(p_data['액션'] == '세트') & (p_data['결과'] == '정확')])
         blk_pts = len(p_data[(p_data['액션'] == '블로킹') & (p_data['결과'] == '득점')])
         tot_err = len(p_data[p_data['결과'].isin(['범실', '실패', '네트터치', '오버넷', '캐치볼', '더블컨택'])])
         
@@ -170,20 +171,20 @@ if st.session_state.log_data:
             "경기명": match_name, "선수명": p, 
             "총 득점": atk_pts + blk_pts + srv_pts,
             "공격 성공률(%)": atk_rate, "리시브 정확도(%)": rec_rate, "서브 성공률(%)": srv_rate,
-            "수비 성공": dig_suc, "블로킹 득점": blk_pts, "총 범실": tot_err
+            "수비 성공": dig_suc, "세트 정확": set_ex, "블로킹 득점": blk_pts, "총 범실": tot_err
         })
     stats_df = pd.DataFrame(stats).sort_values(by="총 득점", ascending=False).reset_index(drop=True)
     st.subheader("🏆 경기/선수별 성공률 및 심층 스탯")
     st.dataframe(stats_df, use_container_width=True, height=150)
 else:
-    st.info("💡 기록을 시작하면 액션별 정확도 및 성공률이 자동으로 계산되어 나타납니다.")
+    st.info("💡 기록을 시작하면 버튼에서 입력된 데이터를 종합하여 성공률 및 효율 스탯이 실시간으로 자동 계산됩니다.")
 
 st.divider()
 
 main_col1, main_col2 = st.columns([35, 65])
 
 # ==========================================
-# 👥 코트 명단 & ⚡ 플레이 내용 영역 (이전과 동일)
+# 👥 코트 명단 영역 
 # ==========================================
 with main_col1:
     st.subheader("👥 코트 명단")
@@ -198,31 +199,39 @@ with main_col1:
                 st.button(p_name, key=f"btn_{pos}", use_container_width=True, type=btn_type, on_click=select_player, args=(p_name,))
         st.write("")
 
+# ==========================================
+# ⚡ 플레이 내용 영역 (버튼명 완벽 원상복구!)
+# ==========================================
 with main_col2:
     st.subheader("⚡ 플레이 내용")
     curr_p = st.session_state.selected_player
     act_c1, act_c2, act_c3, act_c4, act_c5 = st.columns(5)
+    
     with act_c1:
         st.write("**[서브]**")
-        st.button("🔴 득점", use_container_width=True, on_click=record_action, args=(curr_p, "서브", "득점"))
-        st.button("⚪ 성공", use_container_width=True, on_click=record_action, args=(curr_p, "서브", "성공"))
-        st.button("❌ 범실", use_container_width=True, on_click=record_action, args=(curr_p, "서브", "범실"))
+        st.button("🔴 서브 득점", use_container_width=True, on_click=record_action, args=(curr_p, "서브", "득점"))
+        st.button("⚪ 서브 성공", use_container_width=True, on_click=record_action, args=(curr_p, "서브", "성공"))
+        st.button("❌ 서브 범실", use_container_width=True, on_click=record_action, args=(curr_p, "서브", "범실"))
+        
     with act_c2:
         st.write("**[리시브]**")
-        st.button("🎯 정확", use_container_width=True, on_click=record_action, args=(curr_p, "리시브", "정확"))
-        st.button("OK 보통", use_container_width=True, on_click=record_action, args=(curr_p, "리시브", "성공"))
-        st.button("💔 실패", use_container_width=True, on_click=record_action, args=(curr_p, "리시브", "실패"))
+        st.button("🎯 리시브 정확", use_container_width=True, on_click=record_action, args=(curr_p, "리시브", "정확"))
+        st.button("OK 리시브 보통", use_container_width=True, on_click=record_action, args=(curr_p, "리시브", "성공"))
+        st.button("💔 리시브 실패", use_container_width=True, on_click=record_action, args=(curr_p, "리시브", "실패"))
+        
     with act_c3:
         st.write("**[공격]**")
-        st.button("🔥 득점", use_container_width=True, on_click=record_action, args=(curr_p, "공격", "득점"))
-        st.button("❌ 범실", use_container_width=True, on_click=record_action, args=(curr_p, "공격", "범실"))
+        st.button("🔥 공격 득점", use_container_width=True, on_click=record_action, args=(curr_p, "공격", "득점"))
+        st.button("❌ 공격 범실", use_container_width=True, on_click=record_action, args=(curr_p, "공격", "범실"))
         st.write("**[블로킹]**")
-        st.button("🧱 득점", use_container_width=True, on_click=record_action, args=(curr_p, "블로킹", "득점"))
-        st.button("❌ 범실", use_container_width=True, on_click=record_action, args=(curr_p, "블로킹", "범실"))
+        st.button("🧱 블로킹 득점", use_container_width=True, on_click=record_action, args=(curr_p, "블로킹", "득점"))
+        st.button("❌ 블로킹 범실", use_container_width=True, on_click=record_action, args=(curr_p, "블로킹", "범실"))
+
     with act_c4:
         st.write("**[수비/세트]**")
         st.button("👐 수비 성공", use_container_width=True, on_click=record_action, args=(curr_p, "수비", "성공"))
         st.button("⬆️ 세트 정확", use_container_width=True, on_click=record_action, args=(curr_p, "세트", "정확"))
+
     with act_c5:
         st.write("**[기타 범실]**")
         st.button("⚠️ 네트터치", use_container_width=True, on_click=record_action, args=(curr_p, "범실", "네트터치"))
@@ -249,9 +258,9 @@ with col_save1:
                     try:
                         sheet_name = "배구경기기록"
                         sheet = client.open(sheet_name).sheet1
-                        # 📌 기존 기록을 지우지 않고(clear 삭제), 아래에 새로운 줄로 이어서 추가(append_rows)합니다.
+                        # 📌 기존 데이터를 덮어쓰지 않고, 아래에 계속 이어서 붙입니다(누적 저장)
                         sheet.append_rows(stats_df.values.tolist())
-                        st.success(f"✅ 구글 시트에 '{match_name}' 스탯이 누적되었습니다! 엑셀 피벗테이블로 성장세를 확인해보세요.")
+                        st.success(f"✅ 구글 시트에 '{match_name}' 스탯이 누적되었습니다! 시트를 열어 팀의 성장을 확인해보세요.")
                     except Exception as e:
                         st.error(f"❌ 구글 시트 저장 실패: {e}")
                 else:
