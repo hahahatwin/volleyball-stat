@@ -119,16 +119,27 @@ def record_action(player, action_name, result_name):
 def undo_last():
     if st.session_state.log_data: st.session_state.log_data.pop()
 
+# 📌 리셋 함수 생성
+def reset_data():
+    st.session_state.log_data = []
+    st.session_state.selected_player = None
+    st.toast("🔄 모든 기록이 초기화되었습니다!", icon="♻️")
+
 with st.sidebar:
     st.header("📋 경기 및 라인업 설정")
-    match_name = st.text_input("📅 경기명 (예: 2026-07-25 결승전)", value=datetime.now().strftime("%Y-%m-%d 연습경기"))
+    # 📌 경기명 입력칸에 on_change 이벤트를 달아, 글씨가 바뀌면 reset_data가 자동으로 실행됨
+    match_name = st.text_input("📅 경기명 (입력 시 기록 자동 리셋)", value=datetime.now().strftime("%Y-%m-%d 연습경기"), on_change=reset_data)
+    
+    # 📌 수동 리셋 버튼 추가
+    st.button("🔄 현재 기록 전체 초기화", on_click=reset_data, use_container_width=True)
     st.divider()
+    
     positions = ["레프트", "세터", "라이트", "앞차", "센터", "백차", "레프트백", "센터백", "라이트백"]
     for pos in positions:
         st.session_state.lineup[pos] = st.selectbox(f"{pos}", options=st.session_state.team_roster, index=st.session_state.team_roster.index(st.session_state.lineup[pos]), key=f"select_{pos}", on_change=update_lineup_file)
 
 # ==========================================
-# 🏐 대시보드 상단 영역 (심층 스탯 계산 로직 연결)
+# 🏐 대시보드 상단 영역 (심층 스탯 계산 로직 업데이트)
 # ==========================================
 col_title, col_undo = st.columns([4, 1])
 with col_title: st.title(f"🏐 실시간 대시보드: {match_name}")
@@ -147,12 +158,12 @@ if st.session_state.log_data:
         atk_tot = atk_pts + atk_err
         atk_rate = round((atk_pts / atk_tot * 100), 1) if atk_tot > 0 else 0.0
         
-        # 🎯 리시브 정확도: 리시브 정확 / 전체 리시브 시도(정확+성공+실패)
+        # 🎯 리시브 성공률(수정): (정확 + 보통(성공)) / 전체 리시브 시도(정확+성공+실패)
         rec_ex = len(p_data[(p_data['액션'] == '리시브') & (p_data['결과'] == '정확')])
         rec_ok = len(p_data[(p_data['액션'] == '리시브') & (p_data['결과'] == '성공')])
         rec_fail = len(p_data[(p_data['액션'] == '리시브') & (p_data['결과'] == '실패')])
         rec_tot = rec_ex + rec_ok + rec_fail
-        rec_rate = round((rec_ex / rec_tot * 100), 1) if rec_tot > 0 else 0.0
+        rec_rate = round(((rec_ex + rec_ok) / rec_tot * 100), 1) if rec_tot > 0 else 0.0
         
         # 🎯 서브 성공률: (서브 득점 + 서브 성공) / 전체 서브 시도
         srv_pts = len(p_data[(p_data['액션'] == '서브') & (p_data['결과'] == '득점')])
@@ -170,7 +181,7 @@ if st.session_state.log_data:
         stats.append({
             "경기명": match_name, "선수명": p, 
             "총 득점": atk_pts + blk_pts + srv_pts,
-            "공격 성공률(%)": atk_rate, "리시브 정확도(%)": rec_rate, "서브 성공률(%)": srv_rate,
+            "공격 성공률(%)": atk_rate, "리시브 성공률(%)": rec_rate, "서브 성공률(%)": srv_rate,
             "수비 성공": dig_suc, "세트 정확": set_ex, "블로킹 득점": blk_pts, "총 범실": tot_err
         })
     stats_df = pd.DataFrame(stats).sort_values(by="총 득점", ascending=False).reset_index(drop=True)
@@ -200,7 +211,7 @@ with main_col1:
         st.write("")
 
 # ==========================================
-# ⚡ 플레이 내용 영역 (버튼명 완벽 원상복구!)
+# ⚡ 플레이 내용 영역
 # ==========================================
 with main_col2:
     st.subheader("⚡ 플레이 내용")
@@ -258,7 +269,6 @@ with col_save1:
                     try:
                         sheet_name = "배구경기기록"
                         sheet = client.open(sheet_name).sheet1
-                        # 📌 기존 데이터를 덮어쓰지 않고, 아래에 계속 이어서 붙입니다(누적 저장)
                         sheet.append_rows(stats_df.values.tolist())
                         st.success(f"✅ 구글 시트에 '{match_name}' 스탯이 누적되었습니다! 시트를 열어 팀의 성장을 확인해보세요.")
                     except Exception as e:
