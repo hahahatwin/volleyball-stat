@@ -2,20 +2,41 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import io
+import json
+import gspread
+from google.oauth2.service_account import Credentials
 
 st.set_page_config(page_title="9인제 배구 기록", layout="wide")
 
+# ==========================================
+# ☁️ 구글 시트 연결 셋업
+# ==========================================
+@st.cache_resource
+def init_gsheets():
+    try:
+        # 스트림릿 Secrets에 숨겨둔 JSON 열쇠를 불러와서 인증
+        key_dict = json.loads(st.secrets["google_credentials"])
+        scopes = [
+            'https://www.googleapis.com/auth/spreadsheets',
+            'https://www.googleapis.com/auth/drive'
+        ]
+        creds = Credentials.from_service_account_info(key_dict, scopes=scopes)
+        client = gspread.authorize(creds)
+        return client
+    except Exception as e:
+        return None
+
+# ==========================================
+# 🎨 UI 디자인 스타일 적용
+# ==========================================
 st.markdown("""
     <style>
     html, body, [class*="css"] { font-size: 0.95rem; }
     
-    /* 사이드바 너비 축소 */
-    section[data-testid="stSidebar"] {
-        width: 220px !important;
-        min-width: 220px !important;
-    }
+    /* 📌 사이드바(라인업 설정) 너비 대폭 축소 */
+    section[data-testid="stSidebar"] { width: 220px !important; min-width: 220px !important; }
     
-    /* 일반 버튼 (오른쪽 플레이 액션) */
+    /* 일반 버튼 (오른쪽 플레이 액션 - 컴팩트하게) */
     div.stButton > button[kind="secondary"] { 
         height: 3.2em; font-weight: bold; font-size: 0.95rem;
         border-radius: 6px; padding: 2px 2px;
@@ -25,30 +46,20 @@ st.markdown("""
         background-color: #e0f2f1; color: #004d40; border-color: #00695c; 
     }
     
-    /* 🔥 토큰 안의 선수 이름 글씨를 2/3 이상 꽉 차게 강제 확대! 🔥 */
+    /* 🔥 코트 안의 선수 버튼 (노란색 원형 토큰 - 글씨 가득 차게) */
     div.stButton > button[kind="primary"] {
         background-color: #FFC107 !important; 
         color: #111111 !important; 
         border-radius: 60px !important; 
-        border: 2px solid #ffffff !important; 
-        height: 85px !important; /* 토큰 높이 확보 */
-        width: 100% !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
+        border: 2px solid #eeeeee !important; 
+        height: 80px !important; 
+        font-weight: 900 !important;
+        font-size: 2.4rem !important; 
+        line-height: 1 !important;
         box-shadow: 0px 4px 6px rgba(0,0,0,0.2) !important;
         transition: all 0.2s ease-in-out;
-    }
-    
-    /* 버튼 내부의 텍스트(이름) 태그를 직접 타겟팅하여 크기를 2/3 수준으로 대폭 키움 */
-    div.stButton > button[kind="primary"] p {
-        font-size: 2.8rem !important; /* 📌 글씨 크기 극대화 */
-        font-weight: 900 !important;
-        line-height: 1 !important;
-        margin: 0 !important;
         padding: 0 !important;
     }
-
     div.stButton > button[kind="primary"]:focus {
         background-color: #E65100 !important;
         color: white !important;
@@ -87,6 +98,9 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# ==========================================
+# 📊 상태 관리 및 명단 설정
+# ==========================================
 if 'log_data' not in st.session_state:
     st.session_state.log_data = []
 if 'selected_player' not in st.session_state:
@@ -169,11 +183,11 @@ if st.session_state.log_data:
     st.subheader("🏆 실시간 스탯")
     st.dataframe(stats_df, use_container_width=True, height=150)
 else:
+    stats_df = pd.DataFrame()
     st.info("💡 기록을 시작하면 이곳에 실시간 스탯 현황판이 나타납니다.")
 
 st.divider()
 
-# 📌 비율 35:65 배치
 main_col1, main_col2 = st.columns([35, 65])
 
 # ==========================================
@@ -256,20 +270,53 @@ with main_col2:
 
 st.divider()
 
+# ==========================================
+# ☁️ 구글 시트 백업 및 엑셀 다운로드 영역
+# ==========================================
+st.subheader("💾 데이터 저장")
+st.write("경기가 끝나거나 중간 백업이 필요할 때 아래 버튼을 누르면 구글 시트에 기록이 안전하게 저장됩니다.")
+
+col_save1, col_save2 = st.columns(2)
+
+with col_save1:
+    if st.button("☁️ 구글 시트로 현재까지의 기록 백업하기", use_container_width=True, type="primary"):
+        if st.session_state.log_data:
+            with st.spinner("구글 시트에 데이터를 저장하는 중입니다..."):
+                client = init_gsheets()
+                if client:
+                    try:
+                        # ⚠️ 주의: 구글 스프레드시트 이름이 정확히 일치해야 합니다!
+                        sheet_name = "배구경기기록" # 만든 시트 이름과 다르면 이 부분을 수정하세요!
+                        sheet = client.open(sheet_name).sheet1
+                        
+                        # 기존 데이터를 싹 지우고 최신 데이터로 덮어쓰기
+                        sheet.clear()
+                        sheet.update([df_log.columns.values.tolist()] + df_log.values.tolist())
+                        st.success(f"✅ 구글 시트('{sheet_name}')에 기록이 완벽하게 백업되었습니다!")
+                    except Exception as e:
+                        st.error(f"❌ 구글 시트 저장 실패: 스프레드시트 이름이 '{sheet_name}'이(가) 맞는지, 봇 계정에 편집자 권한을 주셨는지 확인하세요. (상세에러: {e})")
+                else:
+                    st.error("❌ 구글 시트 연결을 위한 열쇠(Secrets) 설정에 문제가 있습니다.")
+        else:
+            st.warning("⚠️ 아직 기록된 데이터가 없습니다.")
+
+with col_save2:
+    if st.session_state.log_data:
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df_log.to_excel(writer, index=False, sheet_name='경기기록로그')
+            stats_df.to_excel(writer, index=False, sheet_name='선수별요약스탯')
+        
+        st.download_button(
+            label="📥 엑셀 파일로 바로 다운로드",
+            data=buffer.getvalue(),
+            file_name=f"배구경기기록_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+    else:
+        st.button("📥 엑셀 파일로 바로 다운로드", disabled=True, use_container_width=True)
+
 if st.session_state.log_data:
-    df_log = pd.DataFrame(st.session_state.log_data)
     with st.expander("📝 시간대별 전체 기록 로그 (펼치기)"):
         st.dataframe(df_log.iloc[::-1], use_container_width=True)
-    
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-        df_log.to_excel(writer, index=False, sheet_name='경기기록로그')
-        stats_df.to_excel(writer, index=False, sheet_name='선수별요약스탯')
-    
-    st.download_button(
-        label="📥 엑셀 파일 다운로드",
-        data=buffer.getvalue(),
-        file_name=f"배구경기기록_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        type="primary"
-    )
