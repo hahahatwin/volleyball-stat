@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime
 import io
 import json
+import os
 import gspread
 from google.oauth2.service_account import Credentials
 
@@ -14,7 +15,6 @@ st.set_page_config(page_title="9인제 배구 기록", layout="wide")
 @st.cache_resource
 def init_gsheets():
     try:
-        # 스트림릿 Secrets에 숨겨둔 JSON 열쇠를 불러와서 인증
         key_dict = json.loads(st.secrets["google_credentials"])
         scopes = [
             'https://www.googleapis.com/auth/spreadsheets',
@@ -27,16 +27,15 @@ def init_gsheets():
         return None
 
 # ==========================================
-# 🎨 UI 디자인 스타일 적용
+# 🎨 UI 디자인 스타일 적용 (선택된 선수 강조 포함)
 # ==========================================
 st.markdown("""
     <style>
     html, body, [class*="css"] { font-size: 0.95rem; }
     
-    /* 📌 사이드바(라인업 설정) 너비 대폭 축소 */
     section[data-testid="stSidebar"] { width: 220px !important; min-width: 220px !important; }
     
-    /* 일반 버튼 (오른쪽 플레이 액션 - 컴팩트하게) */
+    /* 오른쪽 플레이 액션 버튼 (회색) */
     div.stButton > button[kind="secondary"] { 
         height: 3.2em; font-weight: bold; font-size: 0.95rem;
         border-radius: 6px; padding: 2px 2px;
@@ -46,36 +45,61 @@ st.markdown("""
         background-color: #e0f2f1; color: #004d40; border-color: #00695c; 
     }
     
-    /* 🔥 코트 안의 선수 버튼 (노란색 원형 토큰 - 글씨 가득 차게) */
+    /* 🔥 1. 기본 코트 선수 버튼 (노란색) */
     div.stButton > button[kind="primary"] {
         background-color: #FFC107 !important; 
         color: #111111 !important; 
         border-radius: 60px !important; 
         border: 2px solid #eeeeee !important; 
-        height: 80px !important; 
-        font-weight: 900 !important;
-        font-size: 2.4rem !important; 
-        line-height: 1 !important;
+        height: 85px !important; 
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
         box-shadow: 0px 4px 6px rgba(0,0,0,0.2) !important;
         transition: all 0.2s ease-in-out;
+    }
+    div.stButton > button[kind="primary"] p {
+        font-size: 2.8rem !important; /* 이름 2/3 꽉 차게 원상복구! */
+        font-weight: 900 !important;
+        line-height: 1 !important;
+        margin: 0 !important;
         padding: 0 !important;
     }
-    div.stButton > button[kind="primary"]:focus {
-        background-color: #E65100 !important;
-        color: white !important;
-        transform: scale(0.95);
+
+    /* 🔥 2. 선택된 코트 선수 버튼 (다홍색/빨간색으로 변신!) */
+    div.stButton > button[kind="tertiary"] {
+        background-color: #FF5722 !important; /* 튀는 다홍색 */
+        color: #ffffff !important; /* 하얀색 글씨 */
+        border-radius: 60px !important; 
+        border: 4px solid #ffffff !important; 
+        height: 85px !important; 
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        box-shadow: 0px 0px 15px rgba(255, 87, 34, 0.6) !important; /* 빛나는 그림자 */
+        transform: scale(1.03); /* 선택 시 살짝 커지는 효과 */
+        transition: all 0.2s ease-in-out;
+    }
+    div.stButton > button[kind="tertiary"] p {
+        font-size: 2.8rem !important; 
+        font-weight: 900 !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     
     .status-box { 
         padding: 8px 15px; border-radius: 8px; background-color: #eceff1; 
         border-left: 5px solid #263238; font-size: 1.05rem;
     }
-    
     .pos-label { 
         font-size: 0.95em; color: #37474f; margin-bottom: -3px; 
         font-weight: 900; text-align: center;
     }
 
+    /* 네트 아트 */
     .net-container {
         position: relative; width: 100%; height: 60px;
         margin-top: 10px; margin-bottom: 30px;
@@ -99,8 +123,10 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 📊 상태 관리 및 명단 설정
+# 📊 상태 관리 및 명단 설정 (명단 자동 저장 기능 추가)
 # ==========================================
+LINEUP_FILE = "saved_lineup.json"
+
 if 'log_data' not in st.session_state:
     st.session_state.log_data = []
 if 'selected_player' not in st.session_state:
@@ -114,20 +140,41 @@ if 'team_roster' not in st.session_state:
         "길운상", "최민규", "강대서", "김용신", "유무영", "김태영", "신정환", "이규승"
     ]
 
+# 처음 접속 시 저장된 명단 파일이 있으면 불러오기
 if 'lineup' not in st.session_state:
-    st.session_state.lineup = {
+    default_lineup = {
         "레프트": st.session_state.team_roster[0], "세터": st.session_state.team_roster[1], "라이트": st.session_state.team_roster[2],
         "앞차": st.session_state.team_roster[3], "센터": st.session_state.team_roster[4], "백차": st.session_state.team_roster[5],
         "레프트백": st.session_state.team_roster[6], "센터백": st.session_state.team_roster[7], "라이트백": st.session_state.team_roster[8]
     }
+    
+    if os.path.exists(LINEUP_FILE):
+        try:
+            with open(LINEUP_FILE, "r", encoding="utf-8") as f:
+                saved = json.load(f)
+            # 저장된 명단 중 로스터에 있는 이름만 적용
+            for k in default_lineup.keys():
+                if k in saved and saved[k] in st.session_state.team_roster:
+                    default_lineup[k] = saved[k]
+        except Exception:
+            pass
+            
+    st.session_state.lineup = default_lineup
+
+# 라인업이 바뀔 때마다 파일에 자동 저장하는 함수
+def update_lineup_file():
+    with open(LINEUP_FILE, "w", encoding="utf-8") as f:
+        json.dump(st.session_state.lineup, f, ensure_ascii=False)
 
 with st.sidebar:
     st.header("📋 라인업(교체)")
     positions = ["레프트", "세터", "라이트", "앞차", "센터", "백차", "레프트백", "센터백", "라이트백"]
     for pos in positions:
+        # 셀렉트박스를 변경할 때마다 update_lineup_file 함수가 실행되어 영구 저장됨
         st.session_state.lineup[pos] = st.selectbox(
             f"{pos}", options=st.session_state.team_roster, 
-            index=st.session_state.team_roster.index(st.session_state.lineup[pos]), key=f"select_{pos}"
+            index=st.session_state.team_roster.index(st.session_state.lineup[pos]), 
+            key=f"select_{pos}", on_change=update_lineup_file
         )
 
 def record_action(player, action_name, result_name):
@@ -208,24 +255,31 @@ with main_col1:
     for i, pos in enumerate(["레프트", "세터", "라이트"]):
         with row1[i]:
             st.markdown(f'<div class="pos-label">{pos}</div>', unsafe_allow_html=True)
-            if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True, type="primary"): 
+            # 선택된 선수면 다홍색(tertiary) 버튼으로, 아니면 기본 노란색(primary) 버튼으로 렌더링
+            btn_type = "tertiary" if st.session_state.selected_player == st.session_state.lineup[pos] else "primary"
+            if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True, type=btn_type): 
                 st.session_state.selected_player = st.session_state.lineup[pos]
+                st.rerun() # 터치 시 즉시 색상 반영을 위해 리런
     
     st.write("")
     row2 = st.columns(3)
     for i, pos in enumerate(["앞차", "센터", "백차"]):
         with row2[i]:
             st.markdown(f'<div class="pos-label">{pos}</div>', unsafe_allow_html=True)
-            if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True, type="primary"): 
+            btn_type = "tertiary" if st.session_state.selected_player == st.session_state.lineup[pos] else "primary"
+            if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True, type=btn_type): 
                 st.session_state.selected_player = st.session_state.lineup[pos]
+                st.rerun()
             
     st.write("")
     row3 = st.columns(3)
     for i, pos in enumerate(["레프트백", "센터백", "라이트백"]):
         with row3[i]:
             st.markdown(f'<div class="pos-label">{pos}</div>', unsafe_allow_html=True)
-            if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True, type="primary"): 
+            btn_type = "tertiary" if st.session_state.selected_player == st.session_state.lineup[pos] else "primary"
+            if st.button(st.session_state.lineup[pos], key=f"btn_{pos}", use_container_width=True, type=btn_type): 
                 st.session_state.selected_player = st.session_state.lineup[pos]
+                st.rerun()
 
 # ==========================================
 # ⚡ 플레이 내용 영역 (비율 65%)
@@ -285,11 +339,8 @@ with col_save1:
                 client = init_gsheets()
                 if client:
                     try:
-                        # ⚠️ 주의: 구글 스프레드시트 이름이 정확히 일치해야 합니다!
-                        sheet_name = "배구경기기록" # 만든 시트 이름과 다르면 이 부분을 수정하세요!
+                        sheet_name = "배구경기기록"
                         sheet = client.open(sheet_name).sheet1
-                        
-                        # 기존 데이터를 싹 지우고 최신 데이터로 덮어쓰기
                         sheet.clear()
                         sheet.update([df_log.columns.values.tolist()] + df_log.values.tolist())
                         st.success(f"✅ 구글 시트('{sheet_name}')에 기록이 완벽하게 백업되었습니다!")
