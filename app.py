@@ -7,7 +7,8 @@ import os
 import gspread
 from google.oauth2.service_account import Credentials
 
-st.set_page_config(page_title="9인제 배구 기록", layout="wide")
+# 화면을 가장 넓게 쓰도록 설정
+st.set_page_config(page_title="9인제 배구 기록", layout="wide", initial_sidebar_state="collapsed")
 
 # ==========================================
 # ☁️ 구글 시트 연결 셋업
@@ -27,73 +28,56 @@ def init_gsheets():
         return None
 
 # ==========================================
-# 🎨 UI 디자인 스타일 적용 (📱 모바일 반응형 CSS 추가!)
+# 🎨 UI 디자인 스타일 적용 (🚀 가로 고정 및 화면 압축 마법 적용)
 # ==========================================
 st.markdown("""
     <style>
-    html, body, [class*="css"] { font-size: 0.95rem; }
-    section[data-testid="stSidebar"] { width: 220px !important; min-width: 220px !important; }
+    /* 전체 여백을 극한으로 줄여서 한 화면에 꽉 차게 만듭니다 */
+    .block-container { padding: 1rem !important; max-width: 100% !important; }
+    html, body, [class*="css"] { font-size: 0.85rem !important; }
     
+    /* 🔥 핵심: 모바일/태블릿에서도 컬럼이 세로로 쌓이지 않고 무조건 가로로 유지되게 강제! */
+    div[data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+    }
+    div[data-testid="column"] {
+        min-width: 0 !important;
+    }
+    
+    /* 일반 플레이 내용 버튼 압축 (글씨가 안 잘리도록 패딩 최소화) */
     div.stButton > button[kind="secondary"] { 
-        height: 3.2em; font-weight: bold; font-size: 0.95rem;
-        border-radius: 6px; padding: 2px 2px;
+        height: 2.8em; font-weight: bold; font-size: 0.75rem !important;
+        border-radius: 6px; padding: 0 2px !important;
         background-color: #f8f9fa; border: 1px solid #cfd8dc; color: #263238;
+        white-space: nowrap !important;
     }
-    div.stButton > button[kind="secondary"]:focus { 
-        background-color: #e0f2f1; color: #004d40; border-color: #00695c; 
-    }
+    div.stButton > button[kind="secondary"]:focus { background-color: #e0f2f1; color: #004d40; border-color: #00695c; }
     
-    div.stButton > button[kind="primary"] {
-        background-color: #FFC107 !important; color: #111111 !important; 
-        border-radius: 60px !important; border: 2px solid #eeeeee !important; 
-        height: 85px !important; width: 100% !important;
+    /* 코트 선수 버튼 압축 (높이를 살짝 줄여 한 화면에 들어오게) */
+    div.stButton > button[kind="primary"], div.stButton > button[kind="tertiary"] {
+        height: 60px !important; width: 100% !important;
+        border-radius: 20px !important; border: 2px solid #eeeeee !important; 
         display: flex !important; justify-content: center !important; align-items: center !important;
         box-shadow: 0px 4px 6px rgba(0,0,0,0.2) !important; transition: all 0.2s ease-in-out;
+        padding: 0 !important;
     }
-    div.stButton > button[kind="primary"] p {
-        font-size: 2.8rem !important; font-weight: 900 !important; line-height: 1 !important; margin: 0 !important; padding: 0 !important;
-    }
-
-    div.stButton > button[kind="tertiary"] {
-        background-color: #FF5722 !important; color: #ffffff !important; 
-        border-radius: 60px !important; border: 4px solid #ffffff !important; 
-        height: 85px !important; width: 100% !important;
-        display: flex !important; justify-content: center !important; align-items: center !important;
-        box-shadow: 0px 0px 15px rgba(255, 87, 34, 0.6) !important; transform: scale(1.03); transition: all 0.2s ease-in-out;
-    }
-    div.stButton > button[kind="tertiary"] p {
-        font-size: 2.8rem !important; font-weight: 900 !important; line-height: 1 !important; margin: 0 !important; padding: 0 !important;
+    div.stButton > button[kind="primary"] { background-color: #FFC107 !important; color: #111111 !important; }
+    div.stButton > button[kind="tertiary"] { background-color: #FF5722 !important; color: #ffffff !important; border-color: #ffffff !important; box-shadow: 0px 0px 10px rgba(255,87,34,0.8) !important; transform: scale(1.03); }
+    
+    div.stButton > button[kind="primary"] p, div.stButton > button[kind="tertiary"] p {
+        font-size: 1.6rem !important; font-weight: 900 !important; line-height: 1 !important; margin: 0 !important;
     }
     
-    .pos-label { font-size: 0.95em; color: #37474f; margin-bottom: -3px; font-weight: 900; text-align: center; }
-    .net-container { position: relative; width: 100%; height: 60px; margin-top: 10px; margin-bottom: 30px; }
-    .net-pole-left, .net-pole-right { position: absolute; top: 0; width: 6px; height: 80px; background-color: #90a4ae; border-radius: 2px; }
+    /* 코트 네트 및 라벨 사이즈 압축 */
+    .pos-label { font-size: 0.8rem; color: #37474f; margin-bottom: -5px; font-weight: 900; text-align: center; }
+    .net-container { position: relative; width: 100%; height: 35px; margin-top: 5px; margin-bottom: 10px; }
+    .net-pole-left, .net-pole-right { position: absolute; top: 0; width: 4px; height: 50px; background-color: #90a4ae; border-radius: 2px; }
     .net-pole-left { left: 0; } .net-pole-right { right: 0; }
-    .net-mesh {
-        position: absolute; top: 10px; left: 6px; right: 6px; height: 40px;
-        background-color: transparent;
-        background-image: linear-gradient(#455a64 1px, transparent 1px), linear-gradient(90deg, #455a64 1px, transparent 1px);
-        background-size: 12px 12px; border-top: 6px solid #ffffff; border-bottom: 2px solid #ffffff; box-shadow: 0 5px 10px rgba(0,0,0,0.1);
-    }
+    .net-mesh { position: absolute; top: 10px; left: 4px; right: 4px; height: 25px; background-color: transparent; background-image: linear-gradient(#455a64 1px, transparent 1px), linear-gradient(90deg, #455a64 1px, transparent 1px); background-size: 10px 10px; border-top: 4px solid #ffffff; border-bottom: 2px solid #ffffff; box-shadow: 0 3px 5px rgba(0,0,0,0.1); }
     
-    /* 📱 모바일 반응형 디자인 (화면 폭 768px 이하일 때만 발동) */
-    @media screen and (max-width: 768px) {
-        div.stButton > button[kind="primary"] p,
-        div.stButton > button[kind="tertiary"] p {
-            font-size: 1.3rem !important; /* 모바일용 폰트 축소 */
-        }
-        div.stButton > button[kind="primary"],
-        div.stButton > button[kind="tertiary"] {
-            height: 60px !important; /* 모바일용 버튼 높이 축소 */
-        }
-        .net-container { height: 40px; margin-bottom: 15px; }
-        .net-pole-left, .net-pole-right { height: 60px; width: 4px; }
-        .net-mesh { height: 30px; background-size: 10px 10px; }
-        div.stButton > button[kind="secondary"] { 
-            font-size: 0.85rem; height: 2.8em; 
-        }
-        .pos-label { font-size: 0.8rem; }
-    }
+    /* 타이틀 및 여백 압축 */
+    h3 { margin-bottom: -15px !important; margin-top: -15px !important; font-size: 1.3rem !important; }
+    hr { margin: 10px 0 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -141,24 +125,23 @@ def undo_last():
 def reset_data():
     st.session_state.log_data = []
     st.session_state.selected_player = None
-    st.toast("🔄 기록이 전체 초기화되었습니다!", icon="♻️")
+    st.toast("🔄 기록이 초기화되었습니다!", icon="♻️")
 
 with st.sidebar:
-    st.header("📋 경기 및 라인업 설정")
-    match_name = st.text_input("📅 경기명 (입력 시 기록 리셋)", value=datetime.now().strftime("%Y-%m-%d 연습경기"), on_change=reset_data)
-    st.button("🔄 현재 기록 전체 초기화", on_click=reset_data, use_container_width=True)
+    st.header("📋 경기 설정")
+    match_name = st.text_input("📅 경기명 (입력 시 리셋)", value=datetime.now().strftime("%Y-%m-%d 연습경기"), on_change=reset_data)
+    st.button("🔄 현재 기록 초기화", on_click=reset_data, use_container_width=True)
     st.divider()
     
-    positions = ["레프트", "세터", "라이트", "앞차", "센터", "백차", "레프트백", "센터백", "라이트백"]
-    for pos in positions:
+    for pos in ["레프트", "세터", "라이트", "앞차", "센터", "백차", "레프트백", "센터백", "라이트백"]:
         st.session_state.lineup[pos] = st.selectbox(f"{pos}", options=st.session_state.team_roster, index=st.session_state.team_roster.index(st.session_state.lineup[pos]), key=f"select_{pos}", on_change=update_lineup_file)
 
 # ==========================================
 # 🏐 대시보드 상단 영역
 # ==========================================
-col_title, col_undo = st.columns([3, 1])
-with col_title: st.title(f"🏐 실시간 대시보드")
-with col_undo: st.write(""); st.button("⏪ 직전 취소", on_click=undo_last, use_container_width=True)
+col_title, col_undo = st.columns([4, 1])
+with col_title: st.markdown(f"### 🏐 {match_name}")
+with col_undo: st.button("⏪ 직전 취소", on_click=undo_last, use_container_width=True)
 
 stats_df = pd.DataFrame()
 if st.session_state.log_data:
@@ -167,27 +150,23 @@ if st.session_state.log_data:
     for p in df_log['선수'].unique():
         p_data = df_log[df_log['선수'] == p]
         
-        # 🎯 공격 성공률
         atk_pts = len(p_data[(p_data['액션'] == '공격') & (p_data['결과'] == '득점')])
         atk_err = len(p_data[(p_data['액션'] == '공격') & (p_data['결과'] == '범실')])
         atk_tot = atk_pts + atk_err
         atk_rate = round((atk_pts / atk_tot * 100), 1) if atk_tot > 0 else 0.0
         
-        # 🎯 리시브 성공률
         rec_ex = len(p_data[(p_data['액션'] == '리시브') & (p_data['결과'] == '정확')])
         rec_ok = len(p_data[(p_data['액션'] == '리시브') & (p_data['결과'] == '성공')])
         rec_fail = len(p_data[(p_data['액션'] == '리시브') & (p_data['결과'] == '실패')])
         rec_tot = rec_ex + rec_ok + rec_fail
         rec_rate = round(((rec_ex + rec_ok) / rec_tot * 100), 1) if rec_tot > 0 else 0.0
         
-        # 🎯 서브 성공률
         srv_pts = len(p_data[(p_data['액션'] == '서브') & (p_data['결과'] == '득점')])
         srv_ok = len(p_data[(p_data['액션'] == '서브') & (p_data['결과'] == '성공')])
         srv_err = len(p_data[(p_data['액션'] == '서브') & (p_data['결과'] == '범실')])
         srv_tot = srv_pts + srv_ok + srv_err
         srv_rate = round(((srv_pts + srv_ok) / srv_tot * 100), 1) if srv_tot > 0 else 0.0
         
-        # 수비 및 세트, 블로킹, 범실
         dig_suc = len(p_data[(p_data['액션'] == '수비') & (p_data['결과'] == '성공')])
         set_ex = len(p_data[(p_data['액션'] == '세트') & (p_data['결과'] == '정확')])
         blk_pts = len(p_data[(p_data['액션'] == '블로킹') & (p_data['결과'] == '득점')])
@@ -201,20 +180,18 @@ if st.session_state.log_data:
         })
     stats_df = pd.DataFrame(stats).sort_values(by="총 득점", ascending=False).reset_index(drop=True)
     
-    with st.expander("🏆 실시간 스탯 펼쳐보기", expanded=True):
-        st.dataframe(stats_df, use_container_width=True, height=150)
-else:
-    st.info("💡 기록을 시작하면 성공률 및 효율 스탯이 계산됩니다.")
+    with st.expander("🏆 스탯 현황판 (클릭하여 열고 닫기)"):
+        st.dataframe(stats_df, use_container_width=True, height=130)
 
 st.divider()
 
-main_col1, main_col2 = st.columns([40, 60])
+# ==========================================
+# 👥 코트 명단 & ⚡ 플레이 내용 (가로 강제 고정 비율 35 : 65)
+# ==========================================
+main_col1, main_col2 = st.columns([35, 65])
 
-# ==========================================
-# 👥 코트 명단 영역 
-# ==========================================
 with main_col1:
-    st.subheader("👥 코트 명단")
+    st.markdown("### 👥 코트 명단")
     st.markdown("""<div class="net-container"><div class="net-pole-left"></div><div class="net-mesh"></div><div class="net-pole-right"></div></div>""", unsafe_allow_html=True)
     for row_pos in [["레프트", "세터", "라이트"], ["앞차", "센터", "백차"], ["레프트백", "센터백", "라이트백"]]:
         cols = st.columns(3)
@@ -226,36 +203,40 @@ with main_col1:
                 st.button(p_name, key=f"btn_{pos}", use_container_width=True, type=btn_type, on_click=select_player, args=(p_name,))
         st.write("")
 
-# ==========================================
-# ⚡ 플레이 내용 영역 (모바일 스크롤 최소화를 위한 3단 레이아웃 변경)
-# ==========================================
+# ⚡ 플레이 내용 (버튼 5개 열 원상복구 및 한 줄 강제 유지)
 with main_col2:
-    st.subheader("⚡ 플레이 내용")
+    st.markdown("### ⚡ 플레이 내용")
     curr_p = st.session_state.selected_player
     
-    # 기존 5개 컬럼 -> 3개 컬럼으로 묶어서 모바일에서 너무 길어지지 않게 조정
-    act_c1, act_c2, act_c3 = st.columns(3)
+    act_c1, act_c2, act_c3, act_c4, act_c5 = st.columns(5)
     
     with act_c1:
-        st.write("**[서브/리시브]**")
+        st.write("**[서브]**")
         st.button("🔴 서브 득점", use_container_width=True, on_click=record_action, args=(curr_p, "서브", "득점"))
         st.button("⚪ 서브 성공", use_container_width=True, on_click=record_action, args=(curr_p, "서브", "성공"))
         st.button("❌ 서브 범실", use_container_width=True, on_click=record_action, args=(curr_p, "서브", "범실"))
+        
+    with act_c2:
+        st.write("**[리시브]**")
         st.button("🎯 리시브 정확", use_container_width=True, on_click=record_action, args=(curr_p, "리시브", "정확"))
         st.button("OK 리시브 보통", use_container_width=True, on_click=record_action, args=(curr_p, "리시브", "성공"))
         st.button("💔 리시브 실패", use_container_width=True, on_click=record_action, args=(curr_p, "리시브", "실패"))
         
-    with act_c2:
-        st.write("**[공격/블로킹/수비]**")
+    with act_c3:
+        st.write("**[공격]**")
         st.button("🔥 공격 득점", use_container_width=True, on_click=record_action, args=(curr_p, "공격", "득점"))
         st.button("❌ 공격 범실", use_container_width=True, on_click=record_action, args=(curr_p, "공격", "범실"))
+        st.write("**[블로킹]**")
         st.button("🧱 블로킹 득점", use_container_width=True, on_click=record_action, args=(curr_p, "블로킹", "득점"))
         st.button("❌ 블로킹 범실", use_container_width=True, on_click=record_action, args=(curr_p, "블로킹", "범실"))
+
+    with act_c4:
+        st.write("**[수비/세트]**")
         st.button("👐 수비 성공", use_container_width=True, on_click=record_action, args=(curr_p, "수비", "성공"))
         st.button("⬆️ 세트 정확", use_container_width=True, on_click=record_action, args=(curr_p, "세트", "정확"))
 
-    with act_c3:
-        st.write("**[기타 범실]**")
+    with act_c5:
+        st.write("**[기타]**")
         st.button("⚠️ 네트터치", use_container_width=True, on_click=record_action, args=(curr_p, "범실", "네트터치"))
         st.button("⚠️ 오버넷", use_container_width=True, on_click=record_action, args=(curr_p, "범실", "오버넷"))
         st.button("⚠️ 캐치볼", use_container_width=True, on_click=record_action, args=(curr_p, "범실", "캐치볼"))
@@ -266,8 +247,6 @@ st.divider()
 # ==========================================
 # ☁️ 구글 시트 백업
 # ==========================================
-st.subheader("💾 데이터 누적 저장")
-
 col_save1, col_save2 = st.columns(2)
 with col_save1:
     if st.button("☁️ 구글 시트에 스탯 저장", use_container_width=True):
