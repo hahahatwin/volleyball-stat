@@ -119,18 +119,14 @@ def record_action(player, action_name, result_name):
 def undo_last():
     if st.session_state.log_data: st.session_state.log_data.pop()
 
-# 📌 리셋 함수 생성
 def reset_data():
     st.session_state.log_data = []
     st.session_state.selected_player = None
-    st.toast("🔄 모든 기록이 초기화되었습니다!", icon="♻️")
+    st.toast("🔄 기록이 전체 초기화되었습니다!", icon="♻️")
 
 with st.sidebar:
     st.header("📋 경기 및 라인업 설정")
-    # 📌 경기명 입력칸에 on_change 이벤트를 달아, 글씨가 바뀌면 reset_data가 자동으로 실행됨
-    match_name = st.text_input("📅 경기명 (입력 시 기록 자동 리셋)", value=datetime.now().strftime("%Y-%m-%d 연습경기"), on_change=reset_data)
-    
-    # 📌 수동 리셋 버튼 추가
+    match_name = st.text_input("📅 경기명 (입력 시 기록 리셋)", value=datetime.now().strftime("%Y-%m-%d 연습경기"), on_change=reset_data)
     st.button("🔄 현재 기록 전체 초기화", on_click=reset_data, use_container_width=True)
     st.divider()
     
@@ -139,7 +135,7 @@ with st.sidebar:
         st.session_state.lineup[pos] = st.selectbox(f"{pos}", options=st.session_state.team_roster, index=st.session_state.team_roster.index(st.session_state.lineup[pos]), key=f"select_{pos}", on_change=update_lineup_file)
 
 # ==========================================
-# 🏐 대시보드 상단 영역 (심층 스탯 계산 로직 업데이트)
+# 🏐 대시보드 상단 영역
 # ==========================================
 col_title, col_undo = st.columns([4, 1])
 with col_title: st.title(f"🏐 실시간 대시보드: {match_name}")
@@ -152,20 +148,20 @@ if st.session_state.log_data:
     for p in df_log['선수'].unique():
         p_data = df_log[df_log['선수'] == p]
         
-        # 🎯 공격 성공률: 공격 득점 / (공격 득점 + 공격 범실)
+        # 🎯 공격 성공률
         atk_pts = len(p_data[(p_data['액션'] == '공격') & (p_data['결과'] == '득점')])
         atk_err = len(p_data[(p_data['액션'] == '공격') & (p_data['결과'] == '범실')])
         atk_tot = atk_pts + atk_err
         atk_rate = round((atk_pts / atk_tot * 100), 1) if atk_tot > 0 else 0.0
         
-        # 🎯 리시브 성공률(수정): (정확 + 보통(성공)) / 전체 리시브 시도(정확+성공+실패)
+        # 🎯 리시브 성공률
         rec_ex = len(p_data[(p_data['액션'] == '리시브') & (p_data['결과'] == '정확')])
         rec_ok = len(p_data[(p_data['액션'] == '리시브') & (p_data['결과'] == '성공')])
         rec_fail = len(p_data[(p_data['액션'] == '리시브') & (p_data['결과'] == '실패')])
         rec_tot = rec_ex + rec_ok + rec_fail
         rec_rate = round(((rec_ex + rec_ok) / rec_tot * 100), 1) if rec_tot > 0 else 0.0
         
-        # 🎯 서브 성공률: (서브 득점 + 서브 성공) / 전체 서브 시도
+        # 🎯 서브 성공률
         srv_pts = len(p_data[(p_data['액션'] == '서브') & (p_data['결과'] == '득점')])
         srv_ok = len(p_data[(p_data['액션'] == '서브') & (p_data['결과'] == '성공')])
         srv_err = len(p_data[(p_data['액션'] == '서브') & (p_data['결과'] == '범실')])
@@ -188,7 +184,7 @@ if st.session_state.log_data:
     st.subheader("🏆 경기/선수별 성공률 및 심층 스탯")
     st.dataframe(stats_df, use_container_width=True, height=150)
 else:
-    st.info("💡 기록을 시작하면 버튼에서 입력된 데이터를 종합하여 성공률 및 효율 스탯이 실시간으로 자동 계산됩니다.")
+    st.info("💡 기록을 시작하면 성공률 및 효율 스탯이 실시간으로 자동 계산됩니다.")
 
 st.divider()
 
@@ -253,24 +249,35 @@ with main_col2:
 st.divider()
 
 # ==========================================
-# ☁️ 구글 시트 백업 (누적 저장 방식 도입)
+# ☁️ 구글 시트 백업 (경기별 탭 생성 및 머리글 완벽 지원)
 # ==========================================
 st.subheader("💾 분석 데이터 누적 저장")
-st.write("해당 경기의 성공률/효율 스탯을 누적합니다. 구글 시트나 엑셀에서 게임별, 개인별 성장을 한눈에 비교할 수 있습니다.")
+st.write("버튼을 누르면 경기명으로 된 '새로운 탭(시트)'이 생성되며 머리글과 함께 깔끔하게 저장됩니다.")
 
 col_save1, col_save2 = st.columns(2)
 
 with col_save1:
-    if st.button("☁️ 구글 시트에 현재 경기 스탯 누적하기", use_container_width=True):
+    if st.button("☁️ 구글 시트에 현재 경기 스탯 저장하기", use_container_width=True):
         if not stats_df.empty:
-            with st.spinner("구글 시트에 데이터를 누적하는 중입니다..."):
+            with st.spinner("구글 시트에 데이터를 저장하는 중입니다..."):
                 client = init_gsheets()
                 if client:
                     try:
                         sheet_name = "배구경기기록"
-                        sheet = client.open(sheet_name).sheet1
-                        sheet.append_rows(stats_df.values.tolist())
-                        st.success(f"✅ 구글 시트에 '{match_name}' 스탯이 누적되었습니다! 시트를 열어 팀의 성장을 확인해보세요.")
+                        spreadsheet = client.open(sheet_name)
+                        
+                        # 📌 1. 현재 경기명과 똑같은 이름의 탭(시트)을 찾거나 새로 만듭니다.
+                        try:
+                            worksheet = spreadsheet.worksheet(match_name)
+                            worksheet.clear() # 이미 해당 경기의 탭이 있다면, 기존 내용을 지우고 최신 기록으로 덮어씁니다.
+                        except gspread.exceptions.WorksheetNotFound:
+                            worksheet = spreadsheet.add_worksheet(title=match_name, rows="100", cols="20")
+                        
+                        # 📌 2. 머리글(항목 이름)과 데이터를 합쳐서 깔끔하게 저장합니다.
+                        data_to_save = [stats_df.columns.values.tolist()] + stats_df.values.tolist()
+                        worksheet.update(data_to_save)
+                        
+                        st.success(f"✅ 구글 시트에 '{match_name}' 전용 탭이 생성/업데이트 되었습니다!")
                     except Exception as e:
                         st.error(f"❌ 구글 시트 저장 실패: {e}")
                 else:
@@ -282,7 +289,7 @@ with col_save2:
     if not stats_df.empty:
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            stats_df.to_excel(writer, index=False, sheet_name='성공률분석스탯')
+            stats_df.to_excel(writer, index=False, sheet_name=match_name[:30])
             df_log.to_excel(writer, index=False, sheet_name='상세시간로그')
         st.download_button(label="📥 엑셀 파일로 통계 다운로드", data=buffer.getvalue(), file_name=f"배구분석_{match_name}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
     else:
